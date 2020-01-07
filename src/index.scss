@@ -1,0 +1,20 @@
+$theme-colors: (
+  "primary": aquamarine
+);
+
+@import "node_modules/bootstrap/scss/bootstrap";
+
+@mixin shadow {
+  box-shadow: 0 0.1rem 0.25rem rgba(0, 0, 0, 0.3),
+    0 0 2.5rem rgba(0, 0, 0, 0.1) inset;
+}
+
+.btn {
+  @include shadow;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  background-color: #f5f5f5;
+  color: #222;
+}
