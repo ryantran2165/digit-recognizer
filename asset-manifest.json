@@ -1,0 +1,25 @@
+{
+  "files": {
+    "main.css": "/handwritten-digits-neural-network/static/css/main.7b7db0d3.chunk.css",
+    "main.js": "/handwritten-digits-neural-network/static/js/main.9b00674a.chunk.js",
+    "main.js.map": "/handwritten-digits-neural-network/static/js/main.9b00674a.chunk.js.map",
+    "runtime-main.js": "/handwritten-digits-neural-network/static/js/runtime-main.4d87e3da.js",
+    "runtime-main.js.map": "/handwritten-digits-neural-network/static/js/runtime-main.4d87e3da.js.map",
+    "static/css/2.64a99b10.chunk.css": "/handwritten-digits-neural-network/static/css/2.64a99b10.chunk.css",
+    "static/js/2.2df4a5a4.chunk.js": "/handwritten-digits-neural-network/static/js/2.2df4a5a4.chunk.js",
+    "static/js/2.2df4a5a4.chunk.js.map": "/handwritten-digits-neural-network/static/js/2.2df4a5a4.chunk.js.map",
+    "index.html": "/handwritten-digits-neural-network/index.html",
+    "precache-manifest.b003efd5055ba41aafecdfbdcd1c23a3.js": "/handwritten-digits-neural-network/precache-manifest.b003efd5055ba41aafecdfbdcd1c23a3.js",
+    "service-worker.js": "/handwritten-digits-neural-network/service-worker.js",
+    "static/css/2.64a99b10.chunk.css.map": "/handwritten-digits-neural-network/static/css/2.64a99b10.chunk.css.map",
+    "static/css/main.7b7db0d3.chunk.css.map": "/handwritten-digits-neural-network/static/css/main.7b7db0d3.chunk.css.map",
+    "static/js/2.2df4a5a4.chunk.js.LICENSE": "/handwritten-digits-neural-network/static/js/2.2df4a5a4.chunk.js.LICENSE"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.4d87e3da.js",
+    "static/css/2.64a99b10.chunk.css",
+    "static/js/2.2df4a5a4.chunk.js",
+    "static/css/main.7b7db0d3.chunk.css",
+    "static/js/main.9b00674a.chunk.js"
+  ]
+}
