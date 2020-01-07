@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "6dbd8d9ed0894e5ef117d3494e67fb16",
+    "revision": "30f271c462a83a86fa60a924c2df1b5e",
     "url": "/handwritten-digits-neural-network/index.html"
   },
   {
@@ -8,7 +8,7 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/handwritten-digits-neural-network/static/css/2.64a99b10.chunk.css"
   },
   {
-    "revision": "c68b2fc1ea514b7f193d",
+    "revision": "520482cd6b22e4f96737",
     "url": "/handwritten-digits-neural-network/static/css/main.7b7db0d3.chunk.css"
   },
   {
@@ -20,8 +20,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/handwritten-digits-neural-network/static/js/2.2df4a5a4.chunk.js.LICENSE"
   },
   {
-    "revision": "c68b2fc1ea514b7f193d",
-    "url": "/handwritten-digits-neural-network/static/js/main.9b00674a.chunk.js"
+    "revision": "520482cd6b22e4f96737",
+    "url": "/handwritten-digits-neural-network/static/js/main.ef20a882.chunk.js"
   },
   {
     "revision": "ddf8ceb4c47afa326e4a",
