@@ -37,27 +37,19 @@ class Sketch extends Component {
           p.background("#d3d3d3");
           this.props.onClear();
         }
+      };
 
-        p.strokeWeight(32);
-        p.stroke(0);
-        if (
-          p.mouseIsPressed &&
-          p.mouseX > 0 &&
-          p.mouseX < p.width &&
-          p.mouseY > 0 &&
-          p.mouseY < p.height
-        ) {
+      p.mouseDragged = () => {
+        if (withinCanvas()) {
+          p.strokeWeight(32);
+          p.stroke(0);
           p.line(p.pmouseX, p.pmouseY, p.mouseX, p.mouseY);
+          return false;
         }
       };
 
       p.mouseReleased = () => {
-        if (
-          p.mouseX > 0 &&
-          p.mouseX < p.width &&
-          p.mouseY > 0 &&
-          p.mouseY < p.height
-        ) {
+        if (withinCanvas()) {
           let img = p.get();
           img.resize(28, 28);
           img.loadPixels();
@@ -68,8 +60,17 @@ class Sketch extends Component {
             input[i] = color === 211 ? 0 : (255 - color) / 255;
           }
           this.props.onDraw(input);
+          return false;
         }
-        return false;
+      };
+
+      const withinCanvas = () => {
+        return (
+          p.mouseX > 0 &&
+          p.mouseX < p.width &&
+          p.mouseY > 0 &&
+          p.mouseY < p.height
+        );
       };
     });
   };
