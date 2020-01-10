@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "30f271c462a83a86fa60a924c2df1b5e",
+    "revision": "bf3cbc1b262a139d3e9baad064e17151",
     "url": "/handwritten-digits-neural-network/index.html"
   },
   {
