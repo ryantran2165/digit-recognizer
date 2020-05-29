@@ -7,12 +7,12 @@ function loadMNIST(callback) {
   let mnist = {};
   let files = {
     trainingImages: "./train-images.idx3-ubyte",
-    trainingLabels: "./train-labels.idx1-ubyte"
-    // testImages: "./t10k-images.idx3-ubyte",
-    // testLabels: "./t10k-labels.idx1-ubyte"
+    trainingLabels: "./train-labels.idx1-ubyte",
+    testImages: "./t10k-images.idx3-ubyte",
+    testLabels: "./t10k-labels.idx1-ubyte",
   };
   return Promise.all(
-    Object.keys(files).map(async file => {
+    Object.keys(files).map(async (file) => {
       mnist[file] = await loadFile(files[file]);
     })
   ).then(() => callback(mnist));
@@ -50,8 +50,10 @@ async function loadFile(file) {
     for (let i = 0; i < headers[1]; i++) {
       dataArr.push(data.subarray(dataLength * i, dataLength * (i + 1)));
     }
+    console.log("Loaded file:", file);
     return dataArr;
   }
+  console.log("Loaded file:", file);
   return data;
 }
 

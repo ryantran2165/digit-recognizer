@@ -8,6 +8,11 @@ import Matrix from "./logic/matrix";
 import loadMNIST from "./logic/mnist";
 import neuralNetworkPretrained from "./neural-network-pretrained.json";
 
+const OUTPUT_MNIST = false;
+const NUM_TRAINING = 5000;
+const NUM_CROSS_VAL = 1000;
+const NUM_TESTING = 1000;
+
 class App extends Component {
   constructor(props) {
     super(props);
@@ -17,13 +22,18 @@ class App extends Component {
       pixels: Array(784).fill(0),
       clearRequested: false,
       isTraining: false,
-      usePretrained: true
+      usePretrained: true,
     };
 
     this.dataFormatted = false;
-    loadMNIST(data => {
+    loadMNIST((data) => {
       this.mnist = data;
       this.neuralNetwork = new NeuralNetwork(null, neuralNetworkPretrained);
+      console.log("All files loaded");
+
+      if (OUTPUT_MNIST) {
+        console.log(this.mnist);
+      }
     });
   }
 
@@ -51,35 +61,59 @@ class App extends Component {
               }
 
               datas.push([
-                Matrix.fromArray(inputArr).map(x => x / 255),
-                Matrix.fromArray(desiredArr)
+                Matrix.vectorFromArray(inputArr).map((x) => x / 255),
+                Matrix.vectorFromArray(desiredArr),
               ]);
             }
 
             return datas;
           };
 
+          console.log("Formatting training data");
           this.trainingDatas = loadDatas(
-            this.mnist.trainingImages.slice(0, 50000),
-            this.mnist.trainingLabels.slice(0, 50000)
+            this.mnist.trainingImages.slice(0, NUM_TRAINING),
+            this.mnist.trainingLabels.slice(0, NUM_TRAINING)
           );
-          // this.testDatas = loadDatas(
-          //   this.mnist.testImages.slice(0, 10000),
-          //   this.mnist.testLabels.slice(0, 10000)
-          // );
+          console.log("Finished formatting training data");
+          console.log("Formatting cross validation data");
+          this.crossValDatas = loadDatas(
+            this.mnist.trainingImages.slice(
+              NUM_TRAINING,
+              NUM_TRAINING + NUM_CROSS_VAL
+            ),
+            this.mnist.trainingLabels.slice(
+              NUM_TRAINING,
+              NUM_TRAINING + NUM_CROSS_VAL
+            )
+          );
+          console.log("Finished formatting cross validation data");
+          console.log("Formatting testing data");
+          this.testDatas = loadDatas(
+            this.mnist.testImages.slice(0, NUM_TESTING),
+            this.mnist.testLabels.slice(0, NUM_TESTING)
+          );
+          console.log("Finished formatting training data");
         }
 
-        this.neuralNetwork.stochasticGradientDescent(
+        console.log("Starting training");
+        // this.neuralNetwork.stochasticGradientDescent(
+        //   this.trainingDatas,
+        //   1,
+        //   10,
+        //   3.0,
+        //   0.0,
+        //   this.testDatas
+        // );
+
+        NeuralNetwork.chooseRegularization(
           this.trainingDatas,
-          1,
-          10,
-          3.0
-          // this.testDatas
+          this.crossValDatas,
+          this.testDatas
         );
 
-        this.setState(prevState => ({
+        this.setState((prevState) => ({
           epochs: prevState.epochs + 1,
-          isTraining: false
+          isTraining: false,
         }));
 
         clearTimeout(this.timer);
@@ -89,11 +123,11 @@ class App extends Component {
 
   handleClickGuess = () => {
     if (this.neuralNetwork !== undefined) {
-      const input = Matrix.fromArray(this.state.pixels);
+      const input = Matrix.vectorFromArray(this.state.pixels);
       const outputArr = this.neuralNetwork.feedforward(input);
       const guess = outputArr.indexOf(Math.max(...outputArr));
       this.setState({
-        guess
+        guess,
       });
     }
   };
@@ -106,19 +140,19 @@ class App extends Component {
     this.setState({
       pixels: Array(784).fill(0),
       clearRequested: false,
-      guess: ""
+      guess: "",
     });
   };
 
-  handleDraw = pixels => {
+  handleDraw = (pixels) => {
     this.setState({
-      pixels
+      pixels,
     });
   };
 
   handleSwitchChange = () => {
     this.setState(
-      prevState => ({ usePretrained: !prevState.usePretrained }),
+      (prevState) => ({ usePretrained: !prevState.usePretrained }),
       () => {
         this.neuralNetwork = this.state.usePretrained
           ? new NeuralNetwork(null, neuralNetworkPretrained)
@@ -140,7 +174,7 @@ class App extends Component {
           <div className="col">
             <Description
               text={
-                'Recognizes handwritten digits using a neural network.\nDraw a number from 0 to 9 and have the neural network guess what you drew.\nTry to center and scale your drawing to fill the majority of the canvas.\nPress the "train" button to train the neural network for one epoch.\nOr just use the pre-trained neural network.\n*Training may take a few minutes depending on your computer.'
+                'Recognizes handwritten digits using a neural network.\nDraw a number from 0 to 9 and have the neural network guess what you drew.\nTry to center and scale your drawing to fill the majority of the canvas.\nPress the "train" button to train the neural network for one epoch (open console to see progress).\nOr just use the pre-trained neural network.\n*Training may take a few minutes depending on your computer.'
               }
             />
           </div>
@@ -180,7 +214,7 @@ class App extends Component {
             <Sketch
               width={500}
               height={500}
-              onDraw={pixels => this.handleDraw(pixels)}
+              onDraw={(pixels) => this.handleDraw(pixels)}
               clearRequested={this.state.clearRequested}
               onClear={this.handleClear}
             />

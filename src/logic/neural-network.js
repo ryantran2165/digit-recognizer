@@ -1,5 +1,15 @@
 import Matrix from "./matrix";
-import { sigmoid, sigmoidDerivative, shuffle } from "./helpers";
+import {
+  sigmoid,
+  sigmoidDerivative,
+  QuadraticCost,
+  CrossEntropyCost,
+  shuffle,
+} from "./helpers";
+
+const CHECK_GRADIENTS = false;
+const DEBUG_TRAINING = false;
+const OUTPUT_NETWORK = false;
 
 class NeuralNetwork {
   /**
@@ -47,6 +57,8 @@ class NeuralNetwork {
         this.weights.push(weight);
       }
     }
+
+    this.cost = CrossEntropyCost;
   }
 
   /**
@@ -54,7 +66,7 @@ class NeuralNetwork {
    * @param {Matrix} input The input as a Matrix object
    * @return {Array} The result as an array
    */
-  feedforward = input => {
+  feedforward = (input) => {
     let output = input;
 
     for (let i = 0; i < this.numLayers - 1; i++) {
@@ -76,6 +88,7 @@ class NeuralNetwork {
    * @param {number} epochs The number of epochs to train for
    * @param {number} miniBatchSize The size of the mini batches
    * @param {number} learningRate The learning rate
+   * @param {number} regularization The regularization parameter
    * @param {Array} testDatas The optional test datas
    */
   stochasticGradientDescent = (
@@ -83,6 +96,7 @@ class NeuralNetwork {
     epochs,
     miniBatchSize,
     learningRate,
+    regularization,
     testDatas = null
   ) => {
     // Training datas = [trainingData == [Matrix(input), Matrix(desiredOutput)]]
@@ -107,20 +121,56 @@ class NeuralNetwork {
       }
 
       // Update each mini batch
-      for (let miniBatch of miniBatches) {
-        this.updateMiniBatch(miniBatch, learningRate);
+      for (let j = 0; j < miniBatches.length; j++) {
+        this.updateMiniBatch(
+          miniBatches[j],
+          learningRate,
+          regularization,
+          trainingDataSize
+        );
+
+        if (DEBUG_TRAINING) {
+          const evaluation = this.evaluate(testDatas);
+          console.log(
+            "Testing mini batch " +
+              (j + 1) +
+              "/" +
+              miniBatches.length +
+              ": " +
+              evaluation +
+              "/" +
+              testDatas.length +
+              ", " +
+              (100 * evaluation) / testDatas.length +
+              "%"
+          );
+        } else {
+          console.log(
+            "Finished mini batch " + (j + 1) + "/" + miniBatches.length
+          );
+        }
       }
 
       // Testing
       if (testDatas !== null) {
+        const evaluation = this.evaluate(testDatas);
         console.log(
-          "Epoch " +
-            i +
+          "Testing epoch " +
+            (i + 1) +
+            "/" +
+            epochs +
             ": " +
-            this.evaluate(testDatas) +
-            " / " +
-            testDatas.length
+            evaluation +
+            "/" +
+            testDatas.length +
+            ", " +
+            (100 * evaluation) / testDatas.length +
+            "%"
         );
+      }
+
+      if (OUTPUT_NETWORK) {
+        console.log(JSON.stringify(this));
       }
     }
   };
@@ -129,27 +179,20 @@ class NeuralNetwork {
    * Updates the mini batch by getting the gradient and then applying it.
    * @param {Array} miniBatch The mini batch of training data
    * @param {number} learningRate The learning rate
+   * @param {number} regularization The regularization parameter
+   * @param {number} trainingDataSize The size of the training data set
    */
-  updateMiniBatch = (miniBatch, learningRate) => {
+  updateMiniBatch = (
+    miniBatch,
+    learningRate,
+    regularization,
+    trainingDataSize
+  ) => {
     // Cumulative gradients for mini batch
     const biasesGradient = this.createEmptyGradient(this.biases);
     const weightsGradient = this.createEmptyGradient(this.weights);
-    this.getMiniBatchGradient(miniBatch, biasesGradient, weightsGradient);
-    this.applyMiniBatchGradient(
-      biasesGradient,
-      weightsGradient,
-      learningRate,
-      miniBatch.length
-    );
-  };
 
-  /**
-   * Calculates the cumulative biases and weights gradients for all training data in the mini batch.
-   * @param {Array} miniBatch The mini batch of training data
-   * @param {Array} biasesGradient The array representing the cumulative biases gradient
-   * @param {Array} weightsGradient The array representing the cumulative weights gradient
-   */
-  getMiniBatchGradient = (miniBatch, biasesGradient, weightsGradient) => {
+    // Calculates the cumulative biases and weights gradients for all training data in the mini batch
     for (let trainingData of miniBatch) {
       const input = trainingData[0];
       const desiredOutput = trainingData[1];
@@ -157,54 +200,45 @@ class NeuralNetwork {
       const biasesGradientDelta = gradientDelta[0];
       const weightsGradientDelta = gradientDelta[1];
 
-      // this.gradientCheck(
-      //   biasesGradientDelta,
-      //   this.biases,
-      //   input,
-      //   desiredOutput
-      // );
-      // this.gradientCheck(
-      //   weightsGradientDelta,
-      //   this.weights,
-      //   input,
-      //   desiredOutput
-      // );
+      // Do gradient checking
+      if (CHECK_GRADIENTS) {
+        const biasesCheck = this.gradientCheck(
+          biasesGradientDelta,
+          this.biases,
+          input,
+          desiredOutput
+        );
+        console.log("Gradient check biases:", biasesCheck);
+        const weightsCheck = this.gradientCheck(
+          weightsGradientDelta,
+          this.weights,
+          input,
+          desiredOutput
+        );
+        console.log("Gradient check weights:", weightsCheck);
+      }
 
       // Add gradient delta to miniBatch
       for (let i = 0; i < this.numLayers - 1; i++) {
-        const biasGradient = biasesGradient[i];
-        const weightGradient = weightsGradient[i];
-        const biasGradientDelta = biasesGradientDelta[i];
-        const weightGradientDelta = weightsGradientDelta[i];
-
-        biasGradient.add(biasGradientDelta);
-        weightGradient.add(weightGradientDelta);
+        biasesGradient[i].add(biasesGradientDelta[i]);
+        weightsGradient[i].add(weightsGradientDelta[i]);
       }
     }
-  };
 
-  /**
-   * Apply the cumulative biases and weights gradients to the network's biases and weights.
-   * @param {Array} biasesGradient The array representing the cumulative biases gradient
-   * @param {Array} weightsGradient The array representing the cumulative weights gradient
-   * @param {number} learningRate The learning rate
-   * @param {Array} miniBatch The mini batch of training data
-   */
-  applyMiniBatchGradient = (
-    biasesGradient,
-    weightsGradient,
-    learningRate,
-    miniBatchSize
-  ) => {
+    // Apply the cumulative biases and weights gradients to the network's biases and weights
     for (let i = 0; i < this.numLayers - 1; i++) {
-      const bias = this.biases[i];
-      const weight = this.weights[i];
-      const biasGradient = biasesGradient[i];
-      const weightGradient = weightsGradient[i];
+      const learningRateWithAvg = learningRate / miniBatch.length;
 
-      // Adding the negative (i.e. subtracting) average gradient for mini batch
-      bias.sub(biasGradient.mul(learningRate / miniBatchSize));
-      weight.sub(weightGradient.mul(learningRate / miniBatchSize));
+      // Bias adjustment by gradient, no regularization
+      this.biases[i].sub(biasesGradient[i].mul(learningRateWithAvg));
+
+      // Weight regularization
+      this.weights[i].mul(
+        1 - learningRate * (regularization / trainingDataSize)
+      );
+
+      // Weight adjustment by gradient
+      this.weights[i].sub(weightsGradient[i].mul(learningRateWithAvg));
     }
   };
 
@@ -223,8 +257,12 @@ class NeuralNetwork {
     const activations = [input];
     this.trainingFeedforward(zs, activations);
 
-    // Output biasesGradient is simply the output delta
-    const outputError = this.getOutputError(zs, activations, desiredOutput);
+    // Output biasesGradient is simply the output error
+    const outputError = this.cost.delta(
+      zs[zs.length - 1],
+      activations[activations.length - 1],
+      desiredOutput
+    );
     biasesGradient[biasesGradient.length - 1] = outputError;
 
     // Output weightsGradient = outputError * beforeOutputActivationTranspose
@@ -251,20 +289,6 @@ class NeuralNetwork {
   };
 
   /**
-   * Creates an empty gradient with the target array's shape.
-   * @param {Array} target The target array
-   * @return {Array} The empty gradient array with in the shape of the target array
-   */
-  createEmptyGradient = target => {
-    const gradient = [];
-    for (let targetMatrix of target) {
-      const gradientMatrix = new Matrix(targetMatrix.rows, targetMatrix.cols);
-      gradient.push(gradientMatrix);
-    }
-    return gradient;
-  };
-
-  /**
    * Feedforward, but also keeping record of the z's and activations per layer.
    * @param {Array} zs The array to store the z records
    * @param {Array} activations The array to store the activation records
@@ -282,23 +306,6 @@ class NeuralNetwork {
       const a = Matrix.map(z, sigmoid);
       activations.push(a);
     }
-  };
-
-  /**
-   * Calculates the error in the output layer.
-   * outputError = (costDerivative == outputActivation - desiredOutput) hadamardProduct outputZSigmoidDerivative.
-   * @param {Array} zs The z records
-   * @param {Array} activations The activation records
-   * @param {Matrix} desiredOutput The desired output matrix
-   * @return {Matrix} The output error matrix
-   */
-  getOutputError = (zs, activations, desiredOutput) => {
-    const outputActivation = activations[activations.length - 1];
-    const costDerivative = Matrix.sub(outputActivation, desiredOutput);
-    const outputZ = zs[zs.length - 1];
-    const outputZSigmoidDerivative = Matrix.map(outputZ, sigmoidDerivative);
-    const outputError = costDerivative.mul(outputZSigmoidDerivative);
-    return outputError;
   };
 
   /**
@@ -320,11 +327,25 @@ class NeuralNetwork {
   };
 
   /**
+   * Creates an empty gradient with the target array's shape.
+   * @param {Array} target The target array
+   * @return {Array} The empty gradient array with in the shape of the target array
+   */
+  createEmptyGradient = (target) => {
+    const gradient = [];
+    for (let targetMatrix of target) {
+      const gradientMatrix = new Matrix(targetMatrix.rows, targetMatrix.cols);
+      gradient.push(gradientMatrix);
+    }
+    return gradient;
+  };
+
+  /**
    * Returns a count of how many test cases were passed.
    * @param {Array} testDatas The array of test datas
    * @return {number} The number of test cases passed
    */
-  evaluate = testDatas => {
+  evaluate = (testDatas) => {
     let count = 0;
 
     for (let testData of testDatas) {
@@ -350,6 +371,7 @@ class NeuralNetwork {
    * @param {Array} target A reference to the neural network's biases or weights
    * @param {Matrix} input The input matrix
    * @param {Matrix} desiredOutput The desired output matrix
+   * @return {number} The euclidean norm ratio which should be less than 10^-7
    */
   gradientCheck = (gradient, target, input, desiredOutput) => {
     const desiredArr = desiredOutput.toArray();
@@ -388,9 +410,9 @@ class NeuralNetwork {
       }
     }
 
-    let sum = 0;
     let paramSum = 0;
     let paramApproxSum = 0;
+    let errorSum = 0;
 
     // Sum all Euclidean components
     for (let i = 0; i < gradApprox.length; i++) {
@@ -401,17 +423,72 @@ class NeuralNetwork {
 
           paramSum += Math.pow(gradientVal, 2);
           paramApproxSum += Math.pow(gradApproxVal, 2);
-          sum += Math.pow(gradApproxVal - gradientVal, 2);
+          errorSum += Math.pow(gradApproxVal - gradientVal, 2);
         }
       }
     }
 
-    // Euclidean norm
-    sum = Math.sqrt(sum);
-    sum /= Math.sqrt(paramApproxSum) + Math.sqrt(paramSum);
+    return (
+      Math.sqrt(errorSum) / (Math.sqrt(paramApproxSum) + Math.sqrt(paramSum))
+    );
+  };
 
-    // Should be less than 10^-7
-    console.log("Sum", sum);
+  static chooseRegularization = (trainingDatas, crossValDatas, testDatas) => {
+    const regularizationOptions = [0.01, 0.03, 0.1, 0.3, 1, 3, 10];
+    let bestRegularization = 0.01;
+    let bestEvaluation = 0;
+    let bestNetwork = null;
+
+    // Train a different model for each regularization option
+    for (let i = 0; i < regularizationOptions.length; i++) {
+      const curRegularization = regularizationOptions[i];
+      const curNetwork = new NeuralNetwork([784, 30, 10]);
+
+      // Train the network using the current regularization setting
+      curNetwork.stochasticGradientDescent(
+        trainingDatas,
+        1,
+        10,
+        3.0,
+        curRegularization
+      );
+
+      // Evaluate using cross validation set
+      const crossValEvaluation = curNetwork.evaluate(crossValDatas);
+
+      // Choose best neural network based on cross validation set
+      if (crossValEvaluation > bestEvaluation) {
+        bestRegularization = curRegularization;
+        bestEvaluation = crossValEvaluation;
+        bestNetwork = curNetwork;
+      }
+    }
+
+    console.log("Best regularization parameter: " + bestRegularization);
+    console.log(
+      "Best cross validation set: " +
+        bestEvaluation +
+        "/" +
+        crossValDatas.length +
+        ", " +
+        (100 * bestEvaluation) / crossValDatas.length +
+        "%"
+    );
+
+    // Test the generalization of the selected network on the test set
+    const generalizationEvaluation = bestNetwork.evaluate(testDatas);
+    console.log(
+      "Best test set: " +
+        generalizationEvaluation +
+        "/" +
+        testDatas.length +
+        ", " +
+        (100 * generalizationEvaluation) / testDatas.length +
+        "%"
+    );
+
+    // Log the best neural network
+    console.log("Best network:", JSON.stringify(bestNetwork));
   };
 }
 

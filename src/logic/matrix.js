@@ -20,7 +20,7 @@ class Matrix {
     }
   }
 
-  add = matrix => {
+  add = (matrix) => {
     if (matrix instanceof Matrix) {
       if (this.rows !== matrix.rows || this.cols !== matrix.cols) {
         console.log("Add: matrix dimensions must match.");
@@ -28,7 +28,7 @@ class Matrix {
       }
       return this.map((x, i, j) => x + matrix.data[i][j]);
     }
-    return this.map(x => x + matrix);
+    return this.map((x) => x + matrix);
   };
 
   static add = (matrix1, matrix2) => {
@@ -41,7 +41,7 @@ class Matrix {
     );
   };
 
-  sub = matrix => {
+  sub = (matrix) => {
     if (matrix instanceof Matrix) {
       if (this.rows !== matrix.rows || this.cols !== matrix.cols) {
         console.log("Subtract: matrix dimensions must match.");
@@ -49,7 +49,7 @@ class Matrix {
       }
       return this.map((x, i, j) => x - matrix.data[i][j]);
     }
-    return this.map(x => x - matrix);
+    return this.map((x) => x - matrix);
   };
 
   static sub = (matrix1, matrix2) => {
@@ -62,7 +62,7 @@ class Matrix {
     );
   };
 
-  mul = matrix => {
+  mul = (matrix) => {
     if (matrix instanceof Matrix) {
       if (this.rows !== matrix.rows || this.cols !== matrix.cols) {
         console.log("Multiply: matrix dimensions must match.");
@@ -70,7 +70,7 @@ class Matrix {
       }
       return this.map((x, i, j) => x * matrix.data[i][j]);
     }
-    return this.map(x => x * matrix);
+    return this.map((x) => x * matrix);
   };
 
   static mul = (matrix1, matrix2) => {
@@ -89,13 +89,13 @@ class Matrix {
     });
   };
 
-  static transpose = matrix => {
+  static transpose = (matrix) => {
     return new Matrix(matrix.cols, matrix.rows).map(
       (_, i, j) => matrix.data[j][i]
     );
   };
 
-  static fromArray = arr => {
+  static vectorFromArray = (arr) => {
     return new Matrix(arr.length, 1).map((_, i) => arr[i]);
   };
 
@@ -113,7 +113,7 @@ class Matrix {
     return new Matrix(this.rows, this.cols).map((_, i, j) => this.data[i][j]);
   };
 
-  map = func => {
+  map = (func) => {
     for (let i = 0; i < this.rows; i++) {
       for (let j = 0; j < this.cols; j++) {
         this.data[i][j] = func(this.data[i][j], i, j);

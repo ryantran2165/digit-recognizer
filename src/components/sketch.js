@@ -3,13 +3,8 @@ import p5 from "p5";
 import PropTypes from "prop-types";
 
 class Sketch extends Component {
-  constructor(props) {
-    super(props);
-    this.renderRef = new React.createRef();
-    this.newSketch();
-  }
-
   componentDidMount() {
+    this.newSketch();
     window.addEventListener("resize", this.newSketch);
   }
 
@@ -18,39 +13,44 @@ class Sketch extends Component {
   }
 
   newSketch = () => {
-    if (this.hasOwnProperty("sketch")) {
-      this.sketch.remove();
+    if (this.hasOwnProperty("myp5")) {
+      this.myp5.remove();
     }
 
-    this.sketch = new p5(p => {
-      p.setup = () => {
+    this.myp5 = new p5((sketch) => {
+      sketch.setup = () => {
         let width = Math.min(this.props.width, window.innerWidth * 0.8);
         let height = this.props.isSquare
           ? width
           : Math.min(this.props.height, window.innerHeight * 0.8);
-        p.createCanvas(width, height).parent(this.renderRef.current);
-        p.background("#d3d3d3");
+        sketch.createCanvas(width, height);
+        sketch.background("#d3d3d3");
       };
 
-      p.draw = () => {
+      sketch.draw = () => {
         if (this.props.clearRequested) {
-          p.background("#d3d3d3");
+          sketch.background("#d3d3d3");
           this.props.onClear();
         }
       };
 
-      p.mouseDragged = () => {
+      sketch.mouseDragged = () => {
         if (withinCanvas()) {
-          p.strokeWeight(32);
-          p.stroke(0);
-          p.line(p.pmouseX, p.pmouseY, p.mouseX, p.mouseY);
+          sketch.strokeWeight(32);
+          sketch.stroke(0);
+          sketch.line(
+            sketch.pmouseX,
+            sketch.pmouseY,
+            sketch.mouseX,
+            sketch.mouseY
+          );
           return false;
         }
       };
 
-      p.mouseReleased = () => {
+      sketch.mouseReleased = () => {
         if (withinCanvas()) {
-          let img = p.get();
+          let img = sketch.get();
           img.resize(28, 28);
           img.loadPixels();
 
@@ -66,24 +66,24 @@ class Sketch extends Component {
 
       const withinCanvas = () => {
         return (
-          p.mouseX > 0 &&
-          p.mouseX < p.width &&
-          p.mouseY > 0 &&
-          p.mouseY < p.height
+          sketch.mouseX > 0 &&
+          sketch.mouseX < sketch.width &&
+          sketch.mouseY > 0 &&
+          sketch.mouseY < sketch.height
         );
       };
-    });
+    }, "p5sketch");
   };
 
   render() {
-    return <div ref={this.renderRef}></div>;
+    return <div id="p5sketch"></div>;
   }
 }
 
 Sketch.defaultProps = {
   width: 100,
   height: 100,
-  isSquare: true
+  isSquare: true,
 };
 
 Sketch.propTypes = {
@@ -92,7 +92,7 @@ Sketch.propTypes = {
   isSquare: PropTypes.bool,
   onDraw: PropTypes.func,
   clearRequested: PropTypes.bool,
-  onClear: PropTypes.func
+  onClear: PropTypes.func,
 };
 
 export default Sketch;
