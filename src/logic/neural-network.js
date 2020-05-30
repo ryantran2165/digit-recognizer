@@ -8,7 +8,8 @@ import {
 } from "./helpers";
 
 const CHECK_GRADIENTS = false;
-const DEBUG_TRAINING = false;
+const LOG_MINI_BATCH_ACCURACY = false;
+const LOG_MINI_BATCH_COST = false;
 const OUTPUT_NETWORK = false;
 
 class NeuralNetwork {
@@ -63,7 +64,7 @@ class NeuralNetwork {
 
   /**
    * Performs feedforward and returns the result as an array.
-   * @param {Matrix} input The input as a Matrix object
+   * @param {Matrix} input The input as a Matrix object (vector)
    * @return {Array} The result as an array
    */
   feedforward = (input) => {
@@ -129,42 +130,52 @@ class NeuralNetwork {
           trainingDataSize
         );
 
-        if (DEBUG_TRAINING) {
-          const evaluation = this.evaluate(testDatas);
+        // Accuracy on test set
+        if (LOG_MINI_BATCH_ACCURACY) {
+          const accuracy = this.accuracy(testDatas);
           console.log(
             "Testing mini batch " +
               (j + 1) +
               "/" +
               miniBatches.length +
               ": " +
-              evaluation +
+              accuracy +
               "/" +
               testDatas.length +
               ", " +
-              (100 * evaluation) / testDatas.length +
+              (100 * accuracy) / testDatas.length +
               "%"
           );
         } else {
+          // Only log this if not doing the more detailed accuracy logging
           console.log(
             "Finished mini batch " + (j + 1) + "/" + miniBatches.length
+          );
+        }
+
+        // Total cost on training set
+        if (LOG_MINI_BATCH_COST) {
+          console.log(
+            "Total cost:",
+            this.totalCost(trainingDatas, regularization)
           );
         }
       }
 
       // Testing
       if (testDatas !== null) {
-        const evaluation = this.evaluate(testDatas);
+        const accuracy = this.accuracy(testDatas);
         console.log(
           "Testing epoch " +
             (i + 1) +
             "/" +
             epochs +
             ": " +
-            evaluation +
+            accuracy +
             "/" +
             testDatas.length +
             ", " +
-            (100 * evaluation) / testDatas.length +
+            (100 * accuracy) / testDatas.length +
             "%"
         );
       }
@@ -345,7 +356,7 @@ class NeuralNetwork {
    * @param {Array} testDatas The array of test datas
    * @return {number} The number of test cases passed
    */
-  evaluate = (testDatas) => {
+  accuracy = (testDatas) => {
     let count = 0;
 
     for (let testData of testDatas) {
@@ -363,6 +374,40 @@ class NeuralNetwork {
     }
 
     return count;
+  };
+
+  /**
+   * Returns the total cost for the data set using the regularization parameter.
+   * @param {Array} datas The array of data to get the total cost for
+   * @param {Number} regularization The regularization parameter
+   */
+  totalCost = (datas, regularization) => {
+    let cost = 0;
+
+    // Add cost of each data point
+    for (let data of datas) {
+      const input = data[0];
+      const desiredOutput = data[1];
+
+      // Get output as a vector
+      const outputVector = Matrix.vectorFromArray(this.feedforward(input));
+
+      // Output cost
+      cost += this.cost.fn(outputVector, desiredOutput) / datas.length;
+
+      // Regularization cost
+      let squaredWeights = 0;
+      for (let weight of this.weights) {
+        for (let r = 0; r < weight.rows; r++) {
+          for (let c = 0; c < weight.cols; c++) {
+            squaredWeights += weight.data[r][c] ** 2;
+          }
+        }
+      }
+      cost += 0.5 * (regularization / datas.length) * squaredWeights;
+    }
+
+    return cost;
   };
 
   /**
@@ -433,10 +478,16 @@ class NeuralNetwork {
     );
   };
 
+  /**
+   * Automation for choosing the regularization parameter.
+   * @param {Array} trainingDatas The array of training datas
+   * @param {Array} crossValDatas The array of cross validation datas
+   * @param {Array} testDatas The array of testing datas
+   */
   static chooseRegularization = (trainingDatas, crossValDatas, testDatas) => {
-    const regularizationOptions = [0.01, 0.03, 0.1, 0.3, 1, 3, 10];
+    const regularizationOptions = [0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10];
     let bestRegularization = 0.01;
-    let bestEvaluation = 0;
+    let bestAccuracy = 0;
     let bestNetwork = null;
 
     // Train a different model for each regularization option
@@ -453,13 +504,13 @@ class NeuralNetwork {
         curRegularization
       );
 
-      // Evaluate using cross validation set
-      const crossValEvaluation = curNetwork.evaluate(crossValDatas);
+      // Evaluate accuracy using cross validation set
+      const crossValAccuracy = curNetwork.accuracy(crossValDatas);
 
       // Choose best neural network based on cross validation set
-      if (crossValEvaluation > bestEvaluation) {
+      if (crossValAccuracy > bestAccuracy) {
         bestRegularization = curRegularization;
-        bestEvaluation = crossValEvaluation;
+        bestAccuracy = crossValAccuracy;
         bestNetwork = curNetwork;
       }
     }
@@ -467,23 +518,23 @@ class NeuralNetwork {
     console.log("Best regularization parameter: " + bestRegularization);
     console.log(
       "Best cross validation set: " +
-        bestEvaluation +
+        bestAccuracy +
         "/" +
         crossValDatas.length +
         ", " +
-        (100 * bestEvaluation) / crossValDatas.length +
+        (100 * bestAccuracy) / crossValDatas.length +
         "%"
     );
 
     // Test the generalization of the selected network on the test set
-    const generalizationEvaluation = bestNetwork.evaluate(testDatas);
+    const generalizationAccuracy = bestNetwork.accuracy(testDatas);
     console.log(
       "Best test set: " +
-        generalizationEvaluation +
+        generalizationAccuracy +
         "/" +
         testDatas.length +
         ", " +
-        (100 * generalizationEvaluation) / testDatas.length +
+        (100 * generalizationAccuracy) / testDatas.length +
         "%"
     );
 

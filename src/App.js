@@ -96,20 +96,20 @@ class App extends Component {
         }
 
         console.log("Starting training");
-        // this.neuralNetwork.stochasticGradientDescent(
-        //   this.trainingDatas,
-        //   1,
-        //   10,
-        //   3.0,
-        //   0.0,
-        //   this.testDatas
-        // );
-
-        NeuralNetwork.chooseRegularization(
+        this.neuralNetwork.stochasticGradientDescent(
           this.trainingDatas,
-          this.crossValDatas,
+          1,
+          10,
+          3.0,
+          1.0,
           this.testDatas
         );
+
+        // NeuralNetwork.chooseRegularization(
+        //   this.trainingDatas,
+        //   this.crossValDatas,
+        //   this.testDatas
+        // );
 
         this.setState((prevState) => ({
           epochs: prevState.epochs + 1,
