@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/handwritten-digits-neural-network/precache-manifest.9b3a3ba5daffac91b50b25b5d576c1f3.js"
+  "/handwritten-digits-neural-network/precache-manifest.b5eeac594f49fae3c77b07d089bc78d0.js"
 );
 
 self.addEventListener('message', (event) => {
