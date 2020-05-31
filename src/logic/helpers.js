@@ -99,7 +99,7 @@ export class SoftmaxActivation {
 }
 
 /**
- * The quadratic cost function and output layer error (unused).
+ * The quadratic cost function and output layer error.
  */
 export class QuadraticCost {
   /**
@@ -133,55 +133,33 @@ export class QuadraticCost {
   };
 }
 
+const EPSILON = 10 ** -100;
+
 /**
- * The cross entropy cost function and output layer error (currently used).
+ * The cross entropy cost function and output layer error.
  */
 export class CrossEntropyCost {
+  /**
+   * Returns the cost = sum over all -(y * ln(a) + (1 - y) * ln(1 - a)).
+   * @param {Matrix} a The activation of the output layer
+   * @param {Matrix} y The desired output
+   * @return {number} The cost
+   */
   static fn = (a, y) => {
-    /**
-     * Returns the cost = sum over all -(y * ln(a) + (1 - y) * ln(1 - a)).
-     * @param {Matrix} a The activation of the output layer
-     * @param {Matrix} y The desired output
-     * @return {number} The cost
-     */
-    console.log("HERE:");
-    a.print();
-    y.print();
     const yIsOne = Matrix.mul(
       Matrix.transpose(y),
       Matrix.map(a, (a_i) => {
-        if (a_i < 0.00001) {
-          a_i = 0.00001;
-        }
-        return Math.log(a_i);
+        // Add small epsilon so if a_i = 0, not doing log(0)
+        return Math.log(a_i + EPSILON);
       })
     );
-    Matrix.transpose(y).print();
-    Matrix.map(a, (a_i) => {
-      if (a_i < 0.00001) {
-        a_i = 0.00001;
-      }
-      return Math.log(a_i);
-    }).print();
-    yIsOne.print();
     const yIsZero = Matrix.mul(
       Matrix.transpose(Matrix.map(y, (y_i) => 1 - y_i)),
       Matrix.map(a, (a_i) => {
-        if (a_i > 0.99999) {
-          a_i = 0.99999;
-        }
-        return Math.log(1 - a_i);
+        // Add small epsilon so if a_i = 1, not doing log(0)
+        return Math.log(1 - a_i + EPSILON);
       })
     );
-    console.log("UH");
-    Matrix.transpose(Matrix.map(y, (y_i) => 1 - y_i)).print();
-    Matrix.map(a, (a_i) => {
-      if (a_i > 0.99999) {
-        a_i = 0.99999;
-      }
-      return Math.log(1 - a_i);
-    }).print();
-    yIsZero.print();
     return -(yIsOne.data[0][0] + yIsZero.data[0][0]);
   };
 
@@ -195,7 +173,10 @@ export class CrossEntropyCost {
    */
   static outputError = (z, a, y, outputActivationFunction) => {
     const costDerivativeWRTa = Matrix.sub(a, y).mul(
-      Matrix.map(a, (a_i) => 1 / (a_i * (1 - a_i)))
+      Matrix.map(a, (a_i) => {
+        // Add small epsilon so never divide by zero
+        return 1 / (a_i * (1 - a_i) + EPSILON);
+      })
     );
     return costDerivativeWRTa.mul(outputActivationFunction.derivative(z));
   };

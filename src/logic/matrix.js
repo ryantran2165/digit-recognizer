@@ -89,6 +89,17 @@ class Matrix {
     });
   };
 
+  div = (matrix) => {
+    if (matrix instanceof Matrix) {
+      if (this.rows !== matrix.rows || this.cols !== matrix.cols) {
+        console.log("Division: matrix dimensions must match.");
+        return;
+      }
+      return this.map((x, i, j) => x / matrix.data[i][j]);
+    }
+    return this.map((x) => x / matrix);
+  };
+
   static transpose = (matrix) => {
     return new Matrix(matrix.cols, matrix.rows).map(
       (_, i, j) => matrix.data[j][i]

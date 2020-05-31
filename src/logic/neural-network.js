@@ -11,7 +11,7 @@ import {
 
 const CHECK_GRADIENTS = false;
 const LOG_MINI_BATCH_ACCURACY = false;
-const LOG_MINI_BATCH_COST = true;
+const LOG_MINI_BATCH_COST = false;
 const OUTPUT_NETWORK = false;
 
 class NeuralNetwork {
@@ -54,7 +54,6 @@ class NeuralNetwork {
 
         this.biases.push(bias);
       }
-      console.log(this.biases);
 
       // Create weight matrices
       this.weights = [];
@@ -67,7 +66,6 @@ class NeuralNetwork {
 
         this.weights.push(weight);
       }
-      console.log(this.weights);
     }
 
     this.hiddenActivationFunction = ReLUActivation;
@@ -204,7 +202,6 @@ class NeuralNetwork {
         );
       }
 
-      console.log(this);
       if (OUTPUT_NETWORK) {
         console.log(JSON.stringify(this));
       }
@@ -293,14 +290,6 @@ class NeuralNetwork {
     const activations = [input];
     this.trainingFeedforward(zs, activations);
 
-    // for (let z of zs) {
-    //   z.print();
-    // }
-    // console.log("----------");
-    // for (let a of activations) {
-    //   a.print();
-    // }
-
     // Output error = costDerivativeWRTa hadamardProduct outputActivationFunctionDerivative(outputZ)
     const outputError = this.cost.outputError(
       zs[zs.length - 1],
@@ -308,8 +297,6 @@ class NeuralNetwork {
       desiredOutput,
       this.outputActivationFunction
     );
-    // console.log("Output Error");
-    // outputError.print();
 
     // Output biasesGradient is simply the output error
     biasesGradient[biasesGradient.length - 1] = outputError;
@@ -342,15 +329,6 @@ class NeuralNetwork {
         hiddenError,
         Matrix.transpose(activations[activations.length - i - 1])
       );
-    }
-
-    console.log("Biases Gradient");
-    for (let x of biasesGradient) {
-      x.print();
-    }
-    console.log("Weights Gradient");
-    for (let x of weightsGradient) {
-      x.print();
     }
 
     return [biasesGradient, weightsGradient];
@@ -447,12 +425,9 @@ class NeuralNetwork {
       }
 
       // Output cost
-      // console.log("Output Arr");
-      // console.log(outputArr);
       cost +=
         this.cost.fn(Matrix.vectorFromArray(outputArr), desiredOutput) /
         datas.length;
-      // console.log("Cost from error: " + cost);
 
       // Regularization cost
       let squaredWeights = 0;
@@ -464,10 +439,6 @@ class NeuralNetwork {
         }
       }
       cost += 0.5 * (regularization / datas.length) * squaredWeights;
-      // console.log(
-      //   "Cost from regularization: " +
-      //     0.5 * (regularization / datas.length) * squaredWeights
-      // );
     }
 
     return [cost, count];
@@ -547,38 +518,52 @@ class NeuralNetwork {
    * @param {Array} crossValDatas The array of cross validation datas
    * @param {Array} testDatas The array of testing datas
    */
-  static chooseRegularization = (trainingDatas, crossValDatas, testDatas) => {
-    const regularizationOptions = [0, 0.01, 0.03, 0.1, 0.3, 1, 3, 10];
+  static chooseHypeparameters = (trainingDatas, crossValDatas, testDatas) => {
+    const miniBatchOptions = [1, 10, 20, 50, 100];
+    const learningRateOptions = [0.01, 0.03, 0.1, 0.3, 1, 3, 10];
+    const regularizationOptions = [0.01, 0.03, 0.1, 0.3, 1, 3, 10];
+    let bestMiniBatch = 1;
+    let bestLearningRate = 0.01;
     let bestRegularization = 0.01;
     let bestAccuracy = 0;
     let bestNetwork = null;
 
-    // Train a different model for each regularization option
-    for (let i = 0; i < regularizationOptions.length; i++) {
-      const curRegularization = regularizationOptions[i];
-      const curNetwork = new NeuralNetwork([784, 30, 10]);
+    // Train a different model for each combination of options
+    for (let i = 0; i < miniBatchOptions.length; i++) {
+      for (let j = 0; j < learningRateOptions.length; j++) {
+        for (let k = 0; k < regularizationOptions.length; k++) {
+          const curMiniBatch = miniBatchOptions[i];
+          const curLearningRate = learningRateOptions[j];
+          const curRegularization = regularizationOptions[k];
 
-      // Train the network using the current regularization setting
-      curNetwork.stochasticGradientDescent(
-        trainingDatas,
-        1,
-        10,
-        3.0,
-        curRegularization
-      );
+          // Train the network using the current settings
+          const curNetwork = new NeuralNetwork([784, 30, 10]);
+          curNetwork.stochasticGradientDescent(
+            trainingDatas,
+            1,
+            curMiniBatch,
+            curLearningRate,
+            curRegularization
+          );
 
-      // Evaluate accuracy using cross validation set
-      const crossValAccuracy = curNetwork.accuracy(crossValDatas);
+          // Evaluate accuracy using cross validation set
+          const crossValAccuracy = curNetwork.accuracy(crossValDatas);
 
-      // Choose best neural network based on cross validation set
-      if (crossValAccuracy > bestAccuracy) {
-        bestRegularization = curRegularization;
-        bestAccuracy = crossValAccuracy;
-        bestNetwork = curNetwork;
+          // Choose best neural network based on cross validation set
+          if (crossValAccuracy > bestAccuracy) {
+            bestMiniBatch = curMiniBatch;
+            bestLearningRate = curLearningRate;
+            bestRegularization = curRegularization;
+            bestAccuracy = crossValAccuracy;
+            bestNetwork = curNetwork;
+          }
+        }
       }
     }
 
-    console.log("Best regularization parameter: " + bestRegularization);
+    console.log("Best mini batch size: " + bestMiniBatch);
+    console.log("Best learning rate: " + bestLearningRate);
+    console.log("Best regularization: " + bestRegularization);
     console.log(
       "Best cross validation set: " +
         bestAccuracy +

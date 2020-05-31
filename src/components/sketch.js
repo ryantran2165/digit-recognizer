@@ -57,7 +57,14 @@ class Sketch extends Component {
           let input = [];
           for (let i = 0; i < 28 * 28; i++) {
             let color = img.pixels[i * 4];
-            input[i] = color === 211 ? 0 : (255 - color) / 255;
+
+            /*
+              MNIST is black background = 0 with white text = 255.
+              Sketch background is light gray = 211, so map it to black = 0.
+              Sketch drawing is black = 0, so map it to white = 255.
+              Normalization is delegated to the moment of guessing.
+            */
+            input[i] = color === 211 ? 0 : 255 - color;
           }
           this.props.onDraw(input);
           return false;
