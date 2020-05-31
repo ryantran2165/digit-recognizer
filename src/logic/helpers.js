@@ -1,32 +1,112 @@
 import Matrix from "./matrix";
 
 /**
- * Returns the sigmoid of the given number.
- * @param {Number} x The number to apply the sigmoid function to
- * @return {Number} the sigmoid of the given number
+ * The sigmoid activation function and derivative.
  */
-export const sigmoid = (x) => {
-  return 1 / (1 + Math.exp(-x));
-};
+export class SigmoidActivation {
+  /**
+   * Returns the matrix mapped with sigmoid.
+   * @param {Matrix} z The matrix to apply the sigmoid function to
+   * @return {Matrix} The matrix mapped with sigmoid
+   */
+  static fn = (z) => {
+    return Matrix.map(z, (z_i) => 1 / (1 + Math.exp(-z_i)));
+  };
+
+  /**
+   * Returns the matrix mapped with sigmoid derivative.
+   * @param {Matrix} z The matrix to apply the sigmoid derivative function to
+   * @return {Matrix} The matrix mapped with sigmoid derivative
+   */
+  static derivative = (z) => {
+    const sigmoid = SigmoidActivation.fn(z);
+    return sigmoid.mul(Matrix.map(sigmoid, (a_i) => 1 - a_i));
+  };
+}
 
 /**
- * Returns the sigmoid derivative of the given number.
- * @param {Number} x The number to apply the sigmoid derivative function to
- * @return {Number} the sigmoid derivative of the given number
+ * The ReLU activation function and derivative.
  */
-export const sigmoidDerivative = (x) => {
-  return sigmoid(x) * (1 - sigmoid(x));
-};
+export class ReLUActivation {
+  /**
+   * Returns the matrix mapped with ReLU.
+   * @param {Matrix} z The matrix to apply the ReLu function to
+   * @return {Matrix} The matrix mapped with ReLu
+   */
+  static fn = (z) => {
+    return Matrix.map(z, (z_i) => Math.max(0, z_i));
+  };
+
+  /**
+   * Returns the matrix mapped with ReLU derivative.
+   * @param {Matrix} z The matrix to apply the ReLU derivative function to
+   * @return {Matrix} The matrix mapped with ReLU derivative
+   */
+  static derivative = (z) => {
+    return Matrix.map(z, (z_i) => (z_i > 0 ? 1 : 0));
+  };
+}
 
 /**
- * The quadratic cost function (unused).
+ * The ReLU activation function and derivative.
+ */
+export class LeakyReLUActivation {
+  /**
+   * Returns the matrix mapped with leaky ReLU.
+   * @param {Matrix} z The matrix to apply the leaky ReLu function to
+   * @return {Matrix} The matrix mapped with leaky ReLu
+   */
+  static fn = (z) => {
+    return Matrix.map(z, (z_i) => (z_i > 0 ? z_i : 0.01 * z_i));
+  };
+
+  /**
+   * Returns the matrix mapped with leaky ReLU derivative.
+   * @param {Matrix} z The matrix to apply the leaky ReLU derivative function to
+   * @return {Matrix} The matrix mapped with leaky ReLU derivative
+   */
+  static derivative = (z) => {
+    return Matrix.map(z, (z_i) => (z_i > 0 ? 1 : 0.01));
+  };
+}
+
+/**
+ * The softmax activation function and derivative.
+ */
+export class SoftmaxActivation {
+  /**
+   * Returns the matrix mapped with softmax.
+   * @param {Matrix} z The matrix to apply the softmax function to
+   * @return {Matrix} The matrix mapped with softmax
+   */
+  static fn = (z) => {
+    let sum = 0;
+    for (let r = 0; r < z.rows; r++) {
+      sum += Math.exp(z.data[r][0]);
+    }
+    return Matrix.map(z, (z_i) => Math.exp(z_i) / sum);
+  };
+
+  /**
+   * Returns the softmax derivative of the given number.
+   * @param {Matrix} z The matrix to apply the softmax derivative function to
+   * @return {Matrix} The matrix mapped with softmax derivative
+   */
+  static derivative = (z) => {
+    const softmax = SoftmaxActivation.fn(z);
+    return softmax.mul(Matrix.map(softmax, (a_i) => 1 - a_i));
+  };
+}
+
+/**
+ * The quadratic cost function and output layer error (unused).
  */
 export class QuadraticCost {
   /**
-   * Returns the cost.
+   * Returns the cost = sum over all (0.5 * (a - y)^2).
    * @param {Matrix} a The activation of the output layer
    * @param {Matrix} y The desired output
-   * @return the cost
+   * @return {number} The cost
    */
   static fn = (a, y) => {
     const diffMatrix = Matrix.sub(a, y);
@@ -40,48 +120,84 @@ export class QuadraticCost {
   };
 
   /**
-   * Returns the error of the output layer.
-   * @param {Matrix} z The z matrix of the output layer
+   * Returns the output error = (a - y) hadamardProduct outputActivationFunctionDerivative(z).
+   * @param {Matrix} z The z of the output layer
    * @param {Matrix} a The activation of the output layer
    * @param {Matrix} y The desired output
-   * @return the error of the output layer
+   * @param {Function} outputActivationFunction The activation function of the output layer
+   * @return {Matrix} The output error
    */
-  static delta = (z, a, y) => {
-    return Matrix.sub(a, y).mul(Matrix.map(z, sigmoidDerivative));
+  static outputError = (z, a, y, outputActivationFunction) => {
+    const costDerivativeWRTa = Matrix.sub(a, y);
+    return costDerivativeWRTa.mul(outputActivationFunction.derivative(z));
   };
 }
 
 /**
- * The cross entropy cost function (currently used).
+ * The cross entropy cost function and output layer error (currently used).
  */
 export class CrossEntropyCost {
   static fn = (a, y) => {
     /**
-     * Returns the cost.
+     * Returns the cost = sum over all -(y * ln(a) + (1 - y) * ln(1 - a)).
      * @param {Matrix} a The activation of the output layer
      * @param {Matrix} y The desired output
-     * @return the cost
+     * @return {number} The cost
      */
+    console.log("HERE:");
+    a.print();
+    y.print();
     const yIsOne = Matrix.mul(
       Matrix.transpose(y),
-      Matrix.map(a, (x) => Math.log(x))
+      Matrix.map(a, (a_i) => {
+        if (a_i < 0.00001) {
+          a_i = 0.00001;
+        }
+        return Math.log(a_i);
+      })
     );
+    Matrix.transpose(y).print();
+    Matrix.map(a, (a_i) => {
+      if (a_i < 0.00001) {
+        a_i = 0.00001;
+      }
+      return Math.log(a_i);
+    }).print();
+    yIsOne.print();
     const yIsZero = Matrix.mul(
-      Matrix.transpose(Matrix.map(y, (x) => 1 - x)),
-      Matrix.map(a, (x) => Math.log(1 - x))
+      Matrix.transpose(Matrix.map(y, (y_i) => 1 - y_i)),
+      Matrix.map(a, (a_i) => {
+        if (a_i > 0.99999) {
+          a_i = 0.99999;
+        }
+        return Math.log(1 - a_i);
+      })
     );
+    console.log("UH");
+    Matrix.transpose(Matrix.map(y, (y_i) => 1 - y_i)).print();
+    Matrix.map(a, (a_i) => {
+      if (a_i > 0.99999) {
+        a_i = 0.99999;
+      }
+      return Math.log(1 - a_i);
+    }).print();
+    yIsZero.print();
     return -(yIsOne.data[0][0] + yIsZero.data[0][0]);
   };
 
   /**
-   * Returns the error of the output layer.
-   * @param {Matrix} z The z matrix of the output layer
+   * Returns the output error = [(a - y) / (a * (1 - a))] hadamardProduct outputActivationFunctionDerivative(z).
+   * @param {Matrix} z The z of the output layer
    * @param {Matrix} a The activation of the output layer
    * @param {Matrix} y The desired output
-   * @return the error of the output layer
+   * @param {Function} outputActivationFunction The activation function of the output layer
+   * @return {Matrix} The derivative with respect to a
    */
-  static delta = (z, a, y) => {
-    return Matrix.sub(a, y);
+  static outputError = (z, a, y, outputActivationFunction) => {
+    const costDerivativeWRTa = Matrix.sub(a, y).mul(
+      Matrix.map(a, (a_i) => 1 / (a_i * (1 - a_i)))
+    );
+    return costDerivativeWRTa.mul(outputActivationFunction.derivative(z));
   };
 }
 

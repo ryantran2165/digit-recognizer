@@ -9,9 +9,9 @@ import loadMNIST from "./logic/mnist";
 import neuralNetworkPretrained from "./neural-network-pretrained.json";
 
 const OUTPUT_MNIST = false;
-const NUM_TRAINING = 5000;
-const NUM_CROSS_VAL = 1000;
-const NUM_TESTING = 1000;
+const NUM_TRAINING = 1;
+const NUM_CROSS_VAL = 1;
+const NUM_TESTING = 1;
 
 class App extends Component {
   constructor(props) {
@@ -23,6 +23,7 @@ class App extends Component {
       clearRequested: false,
       isTraining: false,
       usePretrained: true,
+      outputArr: [],
     };
 
     this.dataFormatted = false;
@@ -99,8 +100,8 @@ class App extends Component {
         this.neuralNetwork.stochasticGradientDescent(
           this.trainingDatas,
           1,
-          10,
-          3.0,
+          1,
+          0.001,
           1.0,
           this.testDatas
         );
@@ -128,6 +129,7 @@ class App extends Component {
       const guess = outputArr.indexOf(Math.max(...outputArr));
       this.setState({
         guess,
+        outputArr,
       });
     }
   };
@@ -141,6 +143,7 @@ class App extends Component {
       pixels: Array(784).fill(0),
       clearRequested: false,
       guess: "",
+      outputArr: [],
     });
   };
 
@@ -163,6 +166,12 @@ class App extends Component {
   };
 
   render() {
+    const probabilities = this.state.outputArr.map((probability, number) => (
+      <h5 key={number}>
+        {number}: {(probability * 100).toFixed(1)}%
+      </h5>
+    ));
+
     return (
       <div className="App container text-center pt-5">
         <div className="row">
@@ -220,13 +229,16 @@ class App extends Component {
             />
           </div>
         </div>
-        <div className="row justify-content-center pb-5">
+        <div className="row justify-content-center">
           <div className="col-6 col-lg-4">
             <h5>Epochs: {this.state.epochs}</h5>
           </div>
           <div className="col-6 col-lg-4">
             <h5>Guess: {this.state.guess}</h5>
           </div>
+        </div>
+        <div className="row justify-content-center pb-5">
+          <div className="col">{probabilities}</div>
         </div>
       </div>
     );

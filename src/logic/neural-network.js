@@ -1,7 +1,9 @@
 import Matrix from "./matrix";
 import {
-  sigmoid,
-  sigmoidDerivative,
+  SigmoidActivation,
+  ReLUActivation,
+  LeakyReLUActivation,
+  SoftmaxActivation,
   QuadraticCost,
   CrossEntropyCost,
   shuffle,
@@ -9,7 +11,7 @@ import {
 
 const CHECK_GRADIENTS = false;
 const LOG_MINI_BATCH_ACCURACY = false;
-const LOG_MINI_BATCH_COST = false;
+const LOG_MINI_BATCH_COST = true;
 const OUTPUT_NETWORK = false;
 
 class NeuralNetwork {
@@ -46,19 +48,30 @@ class NeuralNetwork {
       this.biases = [];
       for (let i = 1; i < sizes.length; i++) {
         const bias = new Matrix(sizes[i], 1);
-        bias.randomizeNormal();
+
+        // He initialization, biases = 0
+        bias.map((b) => 0);
+
         this.biases.push(bias);
       }
+      console.log(this.biases);
 
       // Create weight matrices
       this.weights = [];
       for (let i = 1; i < sizes.length; i++) {
         const weight = new Matrix(sizes[i], sizes[i - 1]);
+
+        // He initialization, weights random standard normal * sqrt(2 / # incoming connections)
         weight.randomizeNormal();
+        weight.map((w) => w * Math.sqrt(2 / sizes[i - 1]));
+
         this.weights.push(weight);
       }
+      console.log(this.weights);
     }
 
+    this.hiddenActivationFunction = ReLUActivation;
+    this.outputActivationFunction = SoftmaxActivation;
     this.cost = CrossEntropyCost;
   }
 
@@ -74,10 +87,13 @@ class NeuralNetwork {
       const bias = this.biases[i];
       const weight = this.weights[i];
 
-      // a = sigmoid(wx + b)
-      output = Matrix.mul(weight, output);
-      output.add(bias);
-      output.map(sigmoid);
+      // z = wx + b, a = activationFunction(z)
+      const z = Matrix.mul(weight, output);
+      z.add(bias);
+      output =
+        i === this.numLayers - 2
+          ? this.outputActivationFunction.fn(z)
+          : this.hiddenActivationFunction.fn(z);
     }
 
     return output.toArray();
@@ -153,11 +169,19 @@ class NeuralNetwork {
           );
         }
 
-        // Total cost on training set
+        // Cost on training set
         if (LOG_MINI_BATCH_COST) {
+          const trainingCost = this.trainingCost(trainingDatas, regularization);
           console.log(
-            "Total cost:",
-            this.totalCost(trainingDatas, regularization)
+            "Training cost: " +
+              trainingCost[0] +
+              ", " +
+              trainingCost[1] +
+              "/" +
+              trainingDatas.length +
+              ", " +
+              (100 * trainingCost[1]) / trainingDatas.length +
+              "%"
           );
         }
       }
@@ -180,6 +204,7 @@ class NeuralNetwork {
         );
       }
 
+      console.log(this);
       if (OUTPUT_NETWORK) {
         console.log(JSON.stringify(this));
       }
@@ -268,12 +293,25 @@ class NeuralNetwork {
     const activations = [input];
     this.trainingFeedforward(zs, activations);
 
-    // Output biasesGradient is simply the output error
-    const outputError = this.cost.delta(
+    // for (let z of zs) {
+    //   z.print();
+    // }
+    // console.log("----------");
+    // for (let a of activations) {
+    //   a.print();
+    // }
+
+    // Output error = costDerivativeWRTa hadamardProduct outputActivationFunctionDerivative(outputZ)
+    const outputError = this.cost.outputError(
       zs[zs.length - 1],
       activations[activations.length - 1],
-      desiredOutput
+      desiredOutput,
+      this.outputActivationFunction
     );
+    // console.log("Output Error");
+    // outputError.print();
+
+    // Output biasesGradient is simply the output error
     biasesGradient[biasesGradient.length - 1] = outputError;
 
     // Output weightsGradient = outputError * beforeOutputActivationTranspose
@@ -285,8 +323,18 @@ class NeuralNetwork {
     // Backpropagate error to hidden layers
     let hiddenError = outputError;
     for (let i = 2; i < this.numLayers; i++) {
+      // Hidden error = (nextWeightsTranspose * nextError which is last pass's hidden error) hadamardProduct hiddenActivationFunctionDerivative(z)
+      const nextWeightsTranspose = Matrix.transpose(
+        this.weights[this.weights.length - i + 1]
+      );
+      const hiddenActivationFunctionDerivative = this.hiddenActivationFunction.derivative(
+        zs[zs.length - i]
+      );
+      hiddenError = Matrix.mul(nextWeightsTranspose, hiddenError).mul(
+        hiddenActivationFunctionDerivative
+      );
+
       // Hidden biasesGradient is simply the hidden error
-      hiddenError = this.getHiddenError(hiddenError, zs, i);
       biasesGradient[biasesGradient.length - i] = hiddenError;
 
       // Hidden weightsGradient = hiddenError * beforeHiddenActivationsTranspose
@@ -294,6 +342,15 @@ class NeuralNetwork {
         hiddenError,
         Matrix.transpose(activations[activations.length - i - 1])
       );
+    }
+
+    console.log("Biases Gradient");
+    for (let x of biasesGradient) {
+      x.print();
+    }
+    console.log("Weights Gradient");
+    for (let x of weightsGradient) {
+      x.print();
     }
 
     return [biasesGradient, weightsGradient];
@@ -309,32 +366,17 @@ class NeuralNetwork {
       const bias = this.biases[i];
       const weight = this.weights[i];
 
-      // z = wa + b, a = sigmoid(z)
+      // z = wa + b, a = activationFunction(z)
       const z = Matrix.mul(weight, activations[i]);
       z.add(bias);
       zs.push(z);
 
-      const a = Matrix.map(z, sigmoid);
+      const a =
+        i === this.numLayers - 2
+          ? this.outputActivationFunction.fn(z)
+          : this.hiddenActivationFunction.fn(z);
       activations.push(a);
     }
-  };
-
-  /**
-   * Calculates the error in the specified hidden layer.
-   * hiddenError = (nextWeightsTranspose * nextError) hadamardProduct sigmoidDerivative(z).
-   * @param {Matrix} nextError The next layer's error matrix
-   * @param {Array} zs The z records
-   * @param {number} i The index offset for the biases and weights of his hidden layer
-   * @return {Matrix} The hidden error matrix
-   */
-  getHiddenError = (nextError, zs, i) => {
-    const nextWeights = this.weights[this.weights.length - i + 1];
-    const nextWeightsTranspose = Matrix.transpose(nextWeights);
-    const z = zs[zs.length - i];
-    const zSigmoidDerivative = Matrix.map(z, sigmoidDerivative);
-    const hiddenError = Matrix.mul(nextWeightsTranspose, nextError);
-    hiddenError.mul(zSigmoidDerivative);
-    return hiddenError;
   };
 
   /**
@@ -368,6 +410,7 @@ class NeuralNetwork {
         Math.max(...desiredOutputArr)
       );
 
+      // Count number correct
       if (outputInteger === desiredOutputInteger) {
         count++;
       }
@@ -377,23 +420,39 @@ class NeuralNetwork {
   };
 
   /**
-   * Returns the total cost for the data set using the regularization parameter.
-   * @param {Array} datas The array of data to get the total cost for
-   * @param {Number} regularization The regularization parameter
+   * Returns the training cost and correct count for the data set using the regularization parameter.
+   * @param {Array} datas The array of data to get the training cost for
+   * @param {number} regularization The regularization parameter
+   * @return {Array} The training cost and correct count
    */
-  totalCost = (datas, regularization) => {
+  trainingCost = (datas, regularization) => {
     let cost = 0;
+    let count = 0;
 
     // Add cost of each data point
     for (let data of datas) {
       const input = data[0];
       const desiredOutput = data[1];
 
-      // Get output as a vector
-      const outputVector = Matrix.vectorFromArray(this.feedforward(input));
+      const outputArr = this.feedforward(input);
+      const desiredOutputArr = desiredOutput.toArray();
+      const outputInteger = outputArr.indexOf(Math.max(...outputArr));
+      const desiredOutputInteger = desiredOutputArr.indexOf(
+        Math.max(...desiredOutputArr)
+      );
+
+      // Count correct
+      if (outputInteger === desiredOutputInteger) {
+        count++;
+      }
 
       // Output cost
-      cost += this.cost.fn(outputVector, desiredOutput) / datas.length;
+      // console.log("Output Arr");
+      // console.log(outputArr);
+      cost +=
+        this.cost.fn(Matrix.vectorFromArray(outputArr), desiredOutput) /
+        datas.length;
+      // console.log("Cost from error: " + cost);
 
       // Regularization cost
       let squaredWeights = 0;
@@ -405,9 +464,13 @@ class NeuralNetwork {
         }
       }
       cost += 0.5 * (regularization / datas.length) * squaredWeights;
+      // console.log(
+      //   "Cost from regularization: " +
+      //     0.5 * (regularization / datas.length) * squaredWeights
+      // );
     }
 
-    return cost;
+    return [cost, count];
   };
 
   /**
