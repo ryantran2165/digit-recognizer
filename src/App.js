@@ -9,6 +9,7 @@ import NeuralNetwork from "./logic/neural-network";
 import Matrix from "./logic/matrix";
 import loadMNIST from "./logic/mnist";
 import neuralNetworkPretrained from "./neural-network-pretrained.json";
+import GithubCorner from "react-github-corner";
 
 const OUTPUT_MNIST = false;
 const NUM_TRAINING = 50000;
@@ -379,6 +380,12 @@ class App extends Component {
         <div className="row justify-content-center pb-5">
           <div className="col">{probabilities}</div>
         </div>
+        <GithubCorner
+          href="https://github.com/ryantran2165/handwritten-digits-neural-network"
+          bannerColor="#222"
+          octoColor="#7fffd4"
+          target="_blank"
+        />
       </div>
     );
   }
