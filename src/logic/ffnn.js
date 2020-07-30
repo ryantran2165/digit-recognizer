@@ -14,30 +14,30 @@ const LOG_MINI_BATCH_ACCURACY = false;
 const LOG_MINI_BATCH_COST = false;
 const OUTPUT_NETWORK = false;
 
-class NeuralNetwork {
+class FFNN {
   /**
-   * Creates a NeuralNetwork with the givens layer sizes or using the preset settings from the optional NeuralNetwork.
+   * Creates a FFNN with the givens layer sizes or using the preset settings from the optional FFNN.
    * @param {Array} sizes An array of layer sizes
-   * @param {NeuralNetwork} neuralNetwork Optional initial settings
+   * @param {FFNN} ffnn Optional initial settings
    */
-  constructor(sizes, neuralNetwork) {
-    if (neuralNetwork) {
+  constructor(sizes, ffnn) {
+    if (ffnn) {
       // Deep copy
-      this.numLayers = neuralNetwork.sizes.length;
+      this.numLayers = ffnn.sizes.length;
       this.sizes = [];
-      for (let size of neuralNetwork.sizes) {
+      for (let size of ffnn.sizes) {
         this.sizes.push(size);
       }
 
       // Copy bias vectors
       this.biases = [];
-      for (let bias of neuralNetwork.biases) {
+      for (let bias of ffnn.biases) {
         this.biases.push(new Matrix(null, null, bias));
       }
 
       // Copy weight matrices
       this.weights = [];
-      for (let weight of neuralNetwork.weights) {
+      for (let weight of ffnn.weights) {
         this.weights.push(new Matrix(null, null, weight));
       }
     } else {
@@ -537,7 +537,7 @@ class NeuralNetwork {
           const curRegularization = regularizationOptions[k];
 
           // Train the network using the current settings
-          const curNetwork = new NeuralNetwork([784, 30, 10]);
+          const curNetwork = new FFNN([784, 30, 10]);
           curNetwork.stochasticGradientDescent(
             trainingDatas,
             1,
@@ -591,4 +591,4 @@ class NeuralNetwork {
   };
 }
 
-export default NeuralNetwork;
+export default FFNN;

@@ -13,6 +13,10 @@ const Description = ({ text }) => {
   return <h5>{addLineBreaks(text)}</h5>;
 };
 
+Description.defaultProps = {
+  text: "Default description"
+};
+
 Description.propTypes = {
   text: PropTypes.string
 };

@@ -3,57 +3,47 @@ import Title from "./components/title";
 import Description from "./components/description";
 import Sketch from "./components/sketch";
 import Button from "./components/button";
-import RangeInput from "./components/range-input";
-import Label from "./components/label";
-import NeuralNetwork from "./logic/neural-network";
+import FFNN from "./logic/ffnn";
 import Matrix from "./logic/matrix";
 import loadMNIST from "./logic/mnist";
-import neuralNetworkPretrained from "./neural-network-pretrained.json";
+import ffnnModel from "./models/ffnn-model.json";
 import GithubCorner from "react-github-corner";
 
-const OUTPUT_MNIST = false;
-const NUM_TRAINING = 50000;
-const NUM_CROSS_VAL = 10000;
-const NUM_TESTING = 10000;
+const OUTPUT_MNIST = true;
+const INCLUDE_CROSS_VAL_SET = true;
+
+const NUM_TRAINING = 5000;
+const NUM_CROSS_VAL = 1000;
+const NUM_TESTING = 1000;
+
+const TRAIN_NETS = false;
 const STANDARDIZATION_OVER_NORMALIZATION = true;
 const EPSILON = 10 ** -100;
-const INCLUDE_CROSS_VAL_SET = false;
 
 class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      epochs: 0,
-      guess: "",
       pixels: Array(784).fill(0),
       clearRequested: false,
-      isTraining: false,
-      usePretrained: true,
-      outputArr: [],
-      trainingSize: 5000,
+      ffnnOutputArr: [],
+      cnnOutputArr: [],
+      ffnnPred: "",
+      cnnPred: "",
     };
 
-    this.dataFormatted = false;
-    loadMNIST((data) => {
-      this.mnist = data;
-      this.neuralNetwork = new NeuralNetwork(null, neuralNetworkPretrained);
-      console.log("All files loaded");
+    if (TRAIN_NETS) {
+      loadMNIST((data) => {
+        this.mnist = data;
+        console.log("All files loaded");
 
-      if (OUTPUT_MNIST) {
-        console.log(this.mnist);
-      }
-    });
-  }
+        if (OUTPUT_MNIST) {
+          console.log(this.mnist);
+        }
 
-  handleClickTrain = () => {
-    if (this.neuralNetwork !== undefined) {
-      this.setState({ isTraining: true });
-
-      this.timer = setTimeout(() => {
         // Only need to format if the current setting disagrees OR it's the first time formatting
         if (
-          this.neuralNetwork.standardizationOverNormalization !==
-            STANDARDIZATION_OVER_NORMALIZATION ||
+          this.ffnn.useStandardization !== STANDARDIZATION_OVER_NORMALIZATION ||
           !this.alreadyFormatted
         ) {
           this.formatData();
@@ -66,30 +56,25 @@ class App extends Component {
         }
 
         console.log("Starting training");
-        this.neuralNetwork.stochasticGradientDescent(
-          this.trainingDatas.slice(0, this.state.trainingSize),
-          1,
-          10,
-          0.03,
-          1.0,
-          this.testDatas
-        );
+        // this.ffnn.stochasticGradientDescent(
+        //   this.trainingDatas.slice(0, this.state.trainingSize),
+        //   1,
+        //   10,
+        //   0.03,
+        //   1.0,
+        //   this.testDatas
+        // );
 
-        // NeuralNetwork.chooseHypeparameters(
+        // ffnn.chooseHypeparameters(
         //   this.trainingDatas,
         //   this.crossValDatas,
         //   this.testDatas
         // );
-
-        this.setState((prevState) => ({
-          epochs: prevState.epochs + 1,
-          isTraining: false,
-        }));
-
-        clearTimeout(this.timer);
-      }, 250);
+      });
+    } else {
     }
-  };
+    this.ffnn = new FFNN(null, ffnnModel);
+  }
 
   formatData() {
     console.log("Formatting training data");
@@ -146,7 +131,7 @@ class App extends Component {
 
   standardizeData = () => {
     // Neural network does NOT have predefined training mean and STD, calculate them and use that to standardize everything
-    if (!this.neuralNetwork.hasOwnProperty("trainingMean")) {
+    if (!this.ffnn.hasOwnProperty("trainingMean")) {
       const mean = new Matrix(784, 1); // mean = sum(pixels) / numTraining
       const std = new Matrix(784, 1); // std = sqrt(sum((pixels - mean)^2) / numTraining)
 
@@ -169,13 +154,13 @@ class App extends Component {
       std.map((x) => Math.sqrt(x / this.trainingDatas.length));
 
       // Save to neural network
-      this.neuralNetwork.trainingMean = mean;
-      this.neuralNetwork.trainingSTD = std;
+      this.ffnn.trainingMean = mean;
+      this.ffnn.trainingSTD = std;
     }
 
     // Retrieve mean and std from neural network
-    const mean = this.neuralNetwork.trainingMean;
-    const std = this.neuralNetwork.trainingSTD;
+    const mean = this.ffnn.trainingMean;
+    const std = this.ffnn.trainingSTD;
 
     // Standardize training images, add small epsilon so never divide by zero
     console.log("Standardizing training data");
@@ -201,7 +186,7 @@ class App extends Component {
       this.testDatas[i][0].sub(mean).div(Matrix.map(std, (x) => x + EPSILON));
     }
 
-    this.neuralNetwork.standardizationOverNormalization = true;
+    this.ffnn.useStandardization = true;
   };
 
   normalizeData = () => {
@@ -222,29 +207,29 @@ class App extends Component {
       testData[0].div(255);
     }
 
-    this.neuralNetwork.standardizationOverNormalization = false;
+    this.ffnn.useStandardization = false;
   };
 
-  handleClickGuess = () => {
-    if (this.neuralNetwork !== undefined) {
+  handleClickPredict = () => {
+    if (this.ffnn !== undefined) {
       const input = Matrix.vectorFromArray(this.state.pixels);
 
       // Standardize or normalize input pixels
-      if (this.neuralNetwork.standardizationOverNormalization) {
+      if (this.ffnn.useStandardization) {
         input
-          .sub(this.neuralNetwork.trainingMean)
-          .div(Matrix.map(this.neuralNetwork.trainingSTD, (x) => x + EPSILON));
+          .sub(this.ffnn.trainingMean)
+          .div(Matrix.map(this.ffnn.trainingSTD, (x) => x + EPSILON));
       } else {
         input.div(255);
       }
 
-      const outputArr = this.neuralNetwork.feedforward(input);
-      const guess = outputArr.indexOf(Math.max(...outputArr));
+      const ffnnOutputArr = this.ffnn.feedforward(input);
+      const ffnnPred = ffnnOutputArr.indexOf(Math.max(...ffnnOutputArr));
 
-      // Update state about guess and displayed probabilities
+      // Update state about prediction and displayed probabilities
       this.setState({
-        guess,
-        outputArr,
+        ffnnPred: ffnnPred,
+        ffnnOutputArr,
       });
     }
   };
@@ -257,8 +242,10 @@ class App extends Component {
     this.setState({
       pixels: Array(784).fill(0),
       clearRequested: false,
-      guess: "",
-      outputArr: [],
+      ffnnOutputArr: [],
+      cnnOutputArr: [],
+      ffnnPred: "",
+      cnnPred: "",
     });
   };
 
@@ -268,91 +255,63 @@ class App extends Component {
     });
   };
 
-  handleSwitchChange = () => {
-    this.setState(
-      (prevState) => ({ usePretrained: !prevState.usePretrained }),
-      () => {
-        this.neuralNetwork = this.state.usePretrained
-          ? new NeuralNetwork(null, neuralNetworkPretrained)
-          : new NeuralNetwork([784, 30, 10]);
-        this.setState({ epochs: 0 });
-      }
-    );
-  };
-
-  updateTrainingSize = (e) => {
-    this.setState({ trainingSize: Number(e.target.value) });
-  };
-
   render() {
-    const probabilities = this.state.outputArr.map((probability, number) => (
-      <h5 key={number}>
-        {number}: {(probability * 100).toFixed(1)}%
-      </h5>
-    ));
+    const ffnnProbs = [];
+    for (let i = 0; i < 10; i++) {
+      const prob = (
+        <div className="row" key={"fnn" + i}>
+          <div className="col text-right">
+            <h5>{i}:</h5>
+          </div>
+          <div className="col text-left">
+            <h5>
+              {this.state.ffnnOutputArr.length > 0
+                ? (this.state.ffnnOutputArr[i] * 100).toFixed(1) + "%"
+                : ""}
+            </h5>
+          </div>
+        </div>
+      );
+      ffnnProbs.push(prob);
+    }
+    const cnnProbs = [];
+    for (let i = 0; i < 10; i++) {
+      const prob = (
+        <div className="row" key={"cnn" + i}>
+          <div className="col text-right">
+            <h5>{i}:</h5>
+          </div>
+          <div className="col text-left">
+            <h5>
+              {this.state.cnnOutputArr.length > 0
+                ? (this.state.cnnOutputArr[i] * 100).toFixed(1) + "%"
+                : ""}
+            </h5>
+          </div>
+        </div>
+      );
+      cnnProbs.push(prob);
+    }
 
     return (
       <div className="App container text-center pt-5">
         <div className="row">
           <div className="col">
-            <Title text="Handwritten Digits Neural Network" />
+            <Title text="Digit Recognizer" />
           </div>
         </div>
         <div className="row">
           <div className="col">
             <Description
               text={
-                "Recognizes handwritten digits using a neural network.\nDraw a number from 0 to 9 and have the neural network guess what you drew.\nTry to center and scale your drawing to fill the majority of the canvas.\nYou can train the neural network with the specified training size for an epoch.\n*Open the console for training progress.\nOr you can just use the pre-trained neural network."
+                "Digit recognition with feed forward (FFNN) and convolutional (CNN) neural networks."
               }
             />
           </div>
         </div>
         <div className="row justify-content-center pt-3">
-          <div className="col custom-control custom-switch">
-            <input
-              type="checkbox"
-              className="custom-control-input"
-              id="customSwitch"
-              checked={this.state.usePretrained}
-              onChange={this.handleSwitchChange}
-            />
-            <label className="custom-control-label" htmlFor="customSwitch">
-              Use pre-trained neural network
-            </label>
-          </div>
-        </div>
-        <div className="row justify-content-center pt-3">
-          <div className="col col-lg-4">
-            <div className="row">
-              <div className="col">
-                <RangeInput
-                  min={1000}
-                  max={50000}
-                  step={1000}
-                  defaultValue={this.state.trainingSize}
-                  id="trainingSize"
-                  onChange={this.updateTrainingSize}
-                />
-              </div>
-            </div>
-            <div className="row">
-              <div className="col">
-                <Label text="Training size" value={this.state.trainingSize} />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="row justify-content-center pt-3">
           <div className="col-4 col-md-3 col-xl-2">
-            <Button
-              value="Train"
-              loadingValue="Training..."
-              isLoading={this.state.isTraining}
-              onClick={this.handleClickTrain}
-            />
-          </div>
-          <div className="col-4 col-md-3 col-xl-2">
-            <Button value="Guess" onClick={this.handleClickGuess} />
+            <Button value="Predict" onClick={this.handleClickPredict} />
           </div>
           <div className="col-4 col-md-3 col-xl-2">
             <Button value="Clear" onClick={this.handleClickClear} />
@@ -369,16 +328,29 @@ class App extends Component {
             />
           </div>
         </div>
-        <div className="row justify-content-center">
-          <div className="col-6 col-lg-4">
-            <h5>Epochs: {this.state.epochs}</h5>
-          </div>
-          <div className="col-6 col-lg-4">
-            <h5>Guess: {this.state.guess}</h5>
-          </div>
-        </div>
         <div className="row justify-content-center pb-5">
-          <div className="col">{probabilities}</div>
+          <div className="col-6 col-md-4">
+            <div className="row">
+              <div className="col text-right">
+                <h5>FFNN:</h5>
+              </div>
+              <div className="col text-left">
+                <h5>{this.state.ffnnPred}</h5>
+              </div>
+            </div>
+            {ffnnProbs}
+          </div>
+          <div className="col-6 col-md-4">
+            <div className="row">
+              <div className="col text-right">
+                <h5>CNN:</h5>
+              </div>
+              <div className="col text-left">
+                <h5>{this.state.cnnPred}</h5>
+              </div>
+            </div>
+            {cnnProbs}
+          </div>
         </div>
         <GithubCorner
           href="https://github.com/ryantran2165/handwritten-digits-neural-network"
