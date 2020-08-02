@@ -17,33 +17,86 @@ class Canvas extends Component {
     this.canvas28 = document.getElementById("canvas28");
     this.ctx28 = this.canvas28.getContext("2d");
 
-    this.canvas.addEventListener(
-      "mousemove",
-      (e) => {
-        this.findxy("move", e);
-      },
-      false
-    );
+    // Mouse
     this.canvas.addEventListener(
       "mousedown",
       (e) => {
-        this.findxy("down", e);
+        this.findxy("down", e, false);
       },
       false
     );
     this.canvas.addEventListener(
       "mouseup",
       (e) => {
-        this.findxy("up", e);
+        this.findxy("up", e, false);
       },
       false
     );
     this.canvas.addEventListener(
       "mouseout",
       (e) => {
-        this.findxy("out", e);
+        this.findxy("out", e, false);
       },
       false
+    );
+    this.canvas.addEventListener(
+      "mousemove",
+      (e) => {
+        this.findxy("move", e, false);
+      },
+      false
+    );
+
+    // Touchscreen
+    this.canvas.addEventListener(
+      "touchstart",
+      (e) => {
+        this.findxy("down", e, true);
+      },
+      false
+    );
+    this.canvas.addEventListener(
+      "touchend",
+      (e) => {
+        this.findxy("up", e, true);
+      },
+      false
+    );
+    this.canvas.addEventListener(
+      "touchmove",
+      (e) => {
+        this.findxy("move", e, true);
+      },
+      false
+    );
+
+    // Prevent scrolling while drawing on touchscreen
+    document.body.addEventListener(
+      "touchstart",
+      (e) => {
+        if (e.target === this.canvas) {
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+    document.body.addEventListener(
+      "touchend",
+      (e) => {
+        if (e.target === this.canvas) {
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+    document.body.addEventListener(
+      "touchmove",
+      (e) => {
+        if (e.target === this.canvas) {
+          e.preventDefault();
+        }
+      },
+      { passive: false }
     );
 
     this.prevX = 0;
@@ -54,11 +107,15 @@ class Canvas extends Component {
     this.paintFlag = false;
   }
 
-  findxy = (res, e) => {
+  findxy = (res, e, isTouch) => {
     if (res === "down") {
       // Get touch down point
-      this.currX = e.clientX - this.canvas.getBoundingClientRect().left;
-      this.currY = e.clientY - this.canvas.getBoundingClientRect().top;
+      this.currX =
+        (isTouch ? e.touches[0].clientX : e.clientX) -
+        this.canvas.getBoundingClientRect().left;
+      this.currY =
+        (isTouch ? e.touches[0].clientY : e.clientY) -
+        this.canvas.getBoundingClientRect().top;
 
       // Draw circle
       this.ctx.beginPath();
@@ -87,8 +144,12 @@ class Canvas extends Component {
       this.prevY = this.currY;
 
       // Get new point
-      this.currX = e.clientX - this.canvas.getBoundingClientRect().left;
-      this.currY = e.clientY - this.canvas.getBoundingClientRect().top;
+      this.currX =
+        (isTouch ? e.touches[0].clientX : e.clientX) -
+        this.canvas.getBoundingClientRect().left;
+      this.currY =
+        (isTouch ? e.touches[0].clientY : e.clientY) -
+        this.canvas.getBoundingClientRect().top;
 
       // Add point to last path
       const currPath = this.paths[this.paths.length - 1];
