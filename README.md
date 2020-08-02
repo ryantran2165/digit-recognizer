@@ -1,4 +1,4 @@
-# Handwritten Digits Neural Network
+# Digit Recognizer
 
 • Constructed interactive demo that recognizes user-drawn handwritten digits  
 • Implemented neural network by hand to deeply understand machine learning concepts and mathematics involved  
