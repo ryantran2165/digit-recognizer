@@ -1,6 +1,6 @@
 {
-  "short_name": "Handwritten Digits NN",
-  "name": "Handwritten Digits Neural Network",
+  "short_name": "Digit Recognizer",
+  "name": "Digit Recognizer",
   "icons": [
     {
       "src": "favicon.png",
