@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "81fd177f0cb0a6b9211850ed75c0488d",
+    "revision": "943c94b21410af119622981652bba8b7",
     "url": "/digit-recognizer/index.html"
   },
   {
@@ -8,7 +8,7 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/digit-recognizer/static/css/2.89f067aa.chunk.css"
   },
   {
-    "revision": "98fa10e836896cbfbc9a",
+    "revision": "9b664b37f59a6efdc0a3",
     "url": "/digit-recognizer/static/css/main.fa8e07e5.chunk.css"
   },
   {
@@ -20,8 +20,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/digit-recognizer/static/js/2.2eba25fe.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "98fa10e836896cbfbc9a",
-    "url": "/digit-recognizer/static/js/main.ab5b4853.chunk.js"
+    "revision": "9b664b37f59a6efdc0a3",
+    "url": "/digit-recognizer/static/js/main.c5d999ee.chunk.js"
   },
   {
     "revision": "f619aef76e30286eb17f",
