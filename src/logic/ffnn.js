@@ -12,7 +12,7 @@ import {
 const CHECK_GRADIENTS = false;
 const LOG_MINI_BATCH_ACCURACY = false;
 const LOG_MINI_BATCH_COST = false;
-const OUTPUT_NETWORK = false;
+const OUTPUT_NETWORK = true;
 
 class FFNN {
   /**
@@ -21,6 +21,10 @@ class FFNN {
    * @param {FFNN} ffnn Optional initial settings
    */
   constructor(sizes, ffnn) {
+    this.hiddenActivationFunction = ReLUActivation;
+    this.outputActivationFunction = SoftmaxActivation;
+    this.cost = CrossEntropyCost;
+
     if (ffnn) {
       // Deep copy
       this.numLayers = ffnn.sizes.length;
@@ -40,6 +44,12 @@ class FFNN {
       for (let weight of ffnn.weights) {
         this.weights.push(new Matrix(null, null, weight));
       }
+
+      // Save mean and std in case of standardization
+      if (ffnn.hasOwnProperty("trainMean")) {
+        this.trainMean = new Matrix(null, null, ffnn.trainMean);
+        this.trainSTD = new Matrix(null, null, ffnn.trainSTD);
+      }
     } else {
       this.numLayers = sizes.length;
       this.sizes = sizes;
@@ -49,8 +59,12 @@ class FFNN {
       for (let i = 1; i < sizes.length; i++) {
         const bias = new Matrix(sizes[i], 1);
 
-        // He initialization, biases = 0
-        bias.map((b) => 0);
+        if (this.hiddenActivationFunction === ReLUActivation) {
+          // He initialization, biases = 0
+          bias.map((b) => 0);
+        } else {
+          bias.randomizeNormal();
+        }
 
         this.biases.push(bias);
       }
@@ -62,15 +76,13 @@ class FFNN {
 
         // He initialization, weights random standard normal * sqrt(2 / # incoming connections)
         weight.randomizeNormal();
-        weight.map((w) => w * Math.sqrt(2 / sizes[i - 1]));
+        if (this.hiddenActivationFunction === ReLUActivation) {
+          weight.map((w) => w * Math.sqrt(2 / sizes[i - 1]));
+        }
 
         this.weights.push(weight);
       }
     }
-
-    this.hiddenActivationFunction = ReLUActivation;
-    this.outputActivationFunction = SoftmaxActivation;
-    this.cost = CrossEntropyCost;
   }
 
   /**
@@ -99,7 +111,7 @@ class FFNN {
 
   /**
    * Performs stochastic gradient descent with the specified hyperparameters.
-   * @param {Array} trainingDatas The array of training datas
+   * @param {Array} trainDatas The array of train datas
    * @param {number} epochs The number of epochs to train for
    * @param {number} miniBatchSize The size of the mini batches
    * @param {number} learningRate The learning rate
@@ -107,30 +119,30 @@ class FFNN {
    * @param {Array} testDatas The optional test datas
    */
   stochasticGradientDescent = (
-    trainingDatas,
+    trainDatas,
     epochs,
     miniBatchSize,
     learningRate,
     regularization,
     testDatas = null
   ) => {
-    // Training datas = [trainingData == [Matrix(input), Matrix(desiredOutput)]]
-    const trainingDataSize = trainingDatas.length;
+    // Train datas = [trainData == [Matrix(input), Matrix(desiredOutput)]]
+    const trainDataSize = trainDatas.length;
 
     // Train for specified number of epochs
     for (let i = 0; i < epochs; i++) {
-      // Shuffle the training datas every epoch
-      shuffle(trainingDatas);
+      // Shuffle the train datas every epoch
+      shuffle(trainDatas);
 
-      // Mini batches = [miniBatch == [trainingData == [Matrix(input), Matrix(desiredOutput)]]]
+      // Mini batches = [miniBatch == [trainData == [Matrix(input), Matrix(desiredOutput)]]]
       const miniBatches = [];
-      for (let j = 0; j < trainingDataSize; j += miniBatchSize) {
-        // Mini batch = [trainingData == [Matrix(input), Matrix(desiredOutput)]]
+      for (let j = 0; j < trainDataSize; j += miniBatchSize) {
+        // Mini batch = [trainData == [Matrix(input), Matrix(desiredOutput)]]
         const miniBatch = [];
 
-        // Training data = [Matrix(input), Matrix(desiredOutput)]
+        // Train data = [Matrix(input), Matrix(desiredOutput)]
         for (let k = j; k < j + miniBatchSize; k++) {
-          miniBatch.push(trainingDatas[k]);
+          miniBatch.push(trainDatas[k]);
         }
         miniBatches.push(miniBatch);
       }
@@ -141,7 +153,7 @@ class FFNN {
           miniBatches[j],
           learningRate,
           regularization,
-          trainingDataSize
+          trainDataSize
         );
 
         // Accuracy on test set
@@ -167,18 +179,18 @@ class FFNN {
           );
         }
 
-        // Cost on training set
+        // Cost on train set
         if (LOG_MINI_BATCH_COST) {
-          const trainingCost = this.trainingCost(trainingDatas, regularization);
+          const trainCost = this.trainCost(trainDatas, regularization);
           console.log(
-            "Training cost: " +
-              trainingCost[0] +
+            "Train cost: " +
+              trainCost[0] +
               ", " +
-              trainingCost[1] +
+              trainCost[1] +
               "/" +
-              trainingDatas.length +
+              trainDatas.length +
               ", " +
-              (100 * trainingCost[1]) / trainingDatas.length +
+              (100 * trainCost[1]) / trainDatas.length +
               "%"
           );
         }
@@ -210,25 +222,25 @@ class FFNN {
 
   /**
    * Updates the mini batch by getting the gradient and then applying it.
-   * @param {Array} miniBatch The mini batch of training data
+   * @param {Array} miniBatch The mini batch of train data
    * @param {number} learningRate The learning rate
    * @param {number} regularization The regularization parameter
-   * @param {number} trainingDataSize The size of the training data set
+   * @param {number} trainDataSize The size of the train data set
    */
   updateMiniBatch = (
     miniBatch,
     learningRate,
     regularization,
-    trainingDataSize
+    trainDataSize
   ) => {
     // Cumulative gradients for mini batch
     const biasesGradient = this.createEmptyGradient(this.biases);
     const weightsGradient = this.createEmptyGradient(this.weights);
 
-    // Calculates the cumulative biases and weights gradients for all training data in the mini batch
-    for (let trainingData of miniBatch) {
-      const input = trainingData[0];
-      const desiredOutput = trainingData[1];
+    // Calculates the cumulative biases and weights gradients for all train data in the mini batch
+    for (let trainData of miniBatch) {
+      const input = trainData[0];
+      const desiredOutput = trainData[1];
       const gradientDelta = this.backpropagate(input, desiredOutput);
       const biasesGradientDelta = gradientDelta[0];
       const weightsGradientDelta = gradientDelta[1];
@@ -266,9 +278,7 @@ class FFNN {
       this.biases[i].sub(biasesGradient[i].mul(learningRateWithAvg));
 
       // Weight regularization
-      this.weights[i].mul(
-        1 - learningRate * (regularization / trainingDataSize)
-      );
+      this.weights[i].mul(1 - learningRate * (regularization / trainDataSize));
 
       // Weight adjustment by gradient
       this.weights[i].sub(weightsGradient[i].mul(learningRateWithAvg));
@@ -276,10 +286,10 @@ class FFNN {
   };
 
   /**
-   * Performs backpropagation to calculate the gradient for one training data.
+   * Performs backpropagation to calculate the gradient for one train data.
    * @param {Matrix} input The input matrix
    * @param {Matrix} desiredOutput The desired output matrix
-   * @return {Array} The array consisting of the biasesGradient and weightsGradient for this one training data
+   * @return {Array} The array consisting of the biasesGradient and weightsGradient for this one train data
    */
   backpropagate = (input, desiredOutput) => {
     const biasesGradient = this.createEmptyGradient(this.biases);
@@ -398,12 +408,12 @@ class FFNN {
   };
 
   /**
-   * Returns the training cost and correct count for the data set using the regularization parameter.
-   * @param {Array} datas The array of data to get the training cost for
+   * Returns the train cost and correct count for the data set using the regularization parameter.
+   * @param {Array} datas The array of data to get the train cost for
    * @param {number} regularization The regularization parameter
-   * @return {Array} The training cost and correct count
+   * @return {Array} The train cost and correct count
    */
-  trainingCost = (datas, regularization) => {
+  trainCost = (datas, regularization) => {
     let cost = 0;
     let count = 0;
 
@@ -514,11 +524,11 @@ class FFNN {
 
   /**
    * Automation for choosing the regularization parameter.
-   * @param {Array} trainingDatas The array of training datas
-   * @param {Array} crossValDatas The array of cross validation datas
-   * @param {Array} testDatas The array of testing datas
+   * @param {Array} trainDatas The array of train datas
+   * @param {Array} valDatas The array of validation datas
+   * @param {Array} testDatas The array of test datas
    */
-  static chooseHypeparameters = (trainingDatas, crossValDatas, testDatas) => {
+  static chooseHypeparameters = (trainDatas, valDatas, testDatas) => {
     const miniBatchOptions = [1, 10, 20, 50, 100];
     const learningRateOptions = [0.01, 0.03, 0.1, 0.3, 1, 3, 10];
     const regularizationOptions = [0.01, 0.03, 0.1, 0.3, 1, 3, 10];
@@ -539,22 +549,22 @@ class FFNN {
           // Train the network using the current settings
           const curNetwork = new FFNN([784, 30, 10]);
           curNetwork.stochasticGradientDescent(
-            trainingDatas,
+            trainDatas,
             1,
             curMiniBatch,
             curLearningRate,
             curRegularization
           );
 
-          // Evaluate accuracy using cross validation set
-          const crossValAccuracy = curNetwork.accuracy(crossValDatas);
+          // Evaluate accuracy using validation set
+          const valAccuracy = curNetwork.accuracy(valDatas);
 
-          // Choose best neural network based on cross validation set
-          if (crossValAccuracy > bestAccuracy) {
+          // Choose best neural network based on validation set
+          if (valAccuracy > bestAccuracy) {
             bestMiniBatch = curMiniBatch;
             bestLearningRate = curLearningRate;
             bestRegularization = curRegularization;
-            bestAccuracy = crossValAccuracy;
+            bestAccuracy = valAccuracy;
             bestNetwork = curNetwork;
           }
         }
@@ -565,12 +575,12 @@ class FFNN {
     console.log("Best learning rate: " + bestLearningRate);
     console.log("Best regularization: " + bestRegularization);
     console.log(
-      "Best cross validation set: " +
+      "Best validation set: " +
         bestAccuracy +
         "/" +
-        crossValDatas.length +
+        valDatas.length +
         ", " +
-        (100 * bestAccuracy) / crossValDatas.length +
+        (100 * bestAccuracy) / valDatas.length +
         "%"
     );
 

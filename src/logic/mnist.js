@@ -6,8 +6,8 @@
 function loadMNIST(callback) {
   let mnist = {};
   let files = {
-    trainingImages: "./train-images.idx3-ubyte",
-    trainingLabels: "./train-labels.idx1-ubyte",
+    trainImages: "./train-images.idx3-ubyte",
+    trainLabels: "./train-labels.idx1-ubyte",
     testImages: "./t10k-images.idx3-ubyte",
     testLabels: "./t10k-labels.idx1-ubyte",
   };
