@@ -7,27 +7,28 @@ import GithubCorner from "react-github-corner";
 import loadMNIST from "./logic/mnist";
 import mnistSamples from "./data/mnist-samples.json";
 import ffnnModel from "./data/ffnn-model.json";
+import cnnModel from "./data/cnn-model.json";
 import Matrix from "./logic/matrix";
 import FFNN from "./logic/ffnn/ffnn";
 import CNN from "./logic/cnn/cnn";
 
 const TRAIN_FFNN = false;
-const TRAIN_CNN = true;
+const TRAIN_CNN = false;
 const NEW_FFNN = false;
-const NEW_CNN = true;
+const NEW_CNN = false;
 const USE_STANDARDIZATION = false;
 
-const LOAD_TRAIN = true;
+const LOAD_TRAIN = false;
 const LOAD_VAL = false;
-const LOAD_TEST = true;
+const LOAD_TEST = false;
 
 const OUTPUT_FFNN_ACCURACY = false;
 const OUTPUT_CNN_ACCURACY = false;
 const OUTPUT_MNIST = false;
 
-const NUM_TRAIN = 300;
+const NUM_TRAIN = 50000;
 const NUM_VAL = 10000;
-const NUM_TEST = 100;
+const NUM_TEST = 10000;
 const EPSILON = 10 ** -100;
 
 const NUM_MNIST_SAMPLES = 5;
@@ -42,7 +43,9 @@ class App extends Component {
       cnnPred: "",
     };
 
+    // For training
     if (TRAIN_FFNN || TRAIN_CNN) {
+      // Do everything after loading
       loadMNIST((data) => {
         this.mnist = data;
         console.log("All files loaded");
@@ -51,19 +54,35 @@ class App extends Component {
           console.log(this.mnist);
         }
 
+        // Format and normalize data
         this.formatData();
         this.normalizeData();
         if (USE_STANDARDIZATION) {
           this.standardizeData();
         }
 
+        // FFNN
         if (TRAIN_FFNN) {
           console.log("Starting FFNN training");
 
+          // Create new or load model
           if (NEW_FFNN) {
             this.ffnn = new FFNN([784, 30, 10]);
           } else {
             this.ffnn = new FFNN(null, ffnnModel);
+
+            if (OUTPUT_FFNN_ACCURACY) {
+              const accuracy = this.ffnn.accuracy(this.ffnnTestDatas);
+              console.log(
+                "Accuracy: " +
+                  accuracy +
+                  "/" +
+                  this.ffnnTestDatas.length +
+                  ", " +
+                  (100 * accuracy) / this.ffnnTestDatas.length +
+                  "%"
+              );
+            }
           }
 
           // Remember to use much smaller learning rate when using ReLU
@@ -77,71 +96,28 @@ class App extends Component {
           );
         }
 
+        // CNN
         if (TRAIN_CNN) {
           console.log("Starting CNN training");
 
+          // Create new or load model
           if (NEW_CNN) {
             this.cnn = new CNN();
           } else {
-            // this.cnn = new CNN(cnnModel);
+            this.cnn = new CNN(cnnModel);
+
+            if (OUTPUT_CNN_ACCURACY) {
+              this.cnn.test(this.cnnTestDatas);
+            }
           }
 
           this.cnn.train(this.cnnTrainDatas, 1, 0.005, this.cnnTestDatas);
-
-          // const out = this.cnn.train(
-          //   this.cnnTrainDatas,
-          //   1,
-          //   0.005,
-          //   this.cnnTestDatas
-          // );
-
-          // const canvas28 = document.getElementById("canvas28");
-          // const ctx28 = canvas28.getContext("2d");
-          // ctx28.clearRect(0, 0, canvas28.width, canvas28.height);
-
-          // for (let y = 0; y < 13; y++) {
-          //   for (let x = 0; x < 13; x++) {
-          //     const block = ctx28.getImageData(x, y, 1, 1);
-          //     const newVal = 255 * 9 * out[0].data[y][x];
-
-          //     block.data[0] = newVal;
-          //     block.data[1] = newVal;
-          //     block.data[2] = newVal;
-          //     block.data[3] = 255;
-
-          //     ctx28.putImageData(block, x, y);
-          //   }
-          // }
         }
       });
     } else {
+      // No training, load both models
       this.ffnn = new FFNN(null, ffnnModel);
-      if (OUTPUT_FFNN_ACCURACY) {
-        const accuracy = this.ffnn.accuracy(this.ffnnTestDatas);
-        console.log(
-          "Accuracy: " +
-            accuracy +
-            "/" +
-            this.ffnnTestDatas.length +
-            ", " +
-            (100 * accuracy) / this.ffnnTestDatas.length +
-            "%"
-        );
-      }
-
-      // this.cnn = new CNN(cnnModel);
-      if (OUTPUT_CNN_ACCURACY) {
-        const accuracy = this.cnn.accuracy(this.cnnTestDatas);
-        console.log(
-          "Accuracy: " +
-            accuracy +
-            "/" +
-            this.cnnTestDatas.length +
-            ", " +
-            (100 * accuracy) / this.cnnTestDatas.length +
-            "%"
-        );
-      }
+      this.cnn = new CNN(cnnModel);
     }
 
     this.canvasRef = React.createRef();
@@ -152,7 +128,10 @@ class App extends Component {
     this.showSamples();
   }
 
-  saveSamples = () => {
+  /**
+   * Outputs JSON of MNIST samples.
+   */
+  saveSamples() {
     const samples = [];
 
     // For each digit
@@ -175,9 +154,12 @@ class App extends Component {
     }
 
     console.log(JSON.stringify(samples));
-  };
+  }
 
-  showSamples = () => {
+  /**
+   * Shows MNISt samples.
+   */
+  showSamples() {
     // For each digit
     for (let i = 0; i < 10; i++) {
       // For the desired number of samples
@@ -204,9 +186,12 @@ class App extends Component {
         }
       }
     }
-  };
+  }
 
-  formatData = () => {
+  /**
+   * Formats data to suitable format to pass to FFNN and CNN.
+   */
+  formatData() {
     if (LOAD_TRAIN) {
       console.log("Formatting train data");
       if (TRAIN_FFNN) {
@@ -260,9 +245,16 @@ class App extends Component {
         );
       }
     }
-  };
+  }
 
-  loadDatas = (images, labels, isFFNN) => {
+  /**
+   * Loads data into image-label pairs.
+   * @param {Array} images Array of images
+   * @param {Array} labels Array of labels
+   * @param {boolean} isFFNN Whether to load the data for FFNN or CNN
+   * @return {Array} Array of image-label pairs
+   */
+  loadDatas(images, labels, isFFNN) {
     const datas = [];
 
     for (let i = 0; i < images.length; i++) {
@@ -287,9 +279,12 @@ class App extends Component {
     }
 
     return datas;
-  };
+  }
 
-  normalizeData = () => {
+  /**
+   * Normalizes all data.
+   */
+  normalizeData() {
     // Normalize train images
     if (LOAD_TRAIN) {
       console.log("Normalizing train data");
@@ -334,9 +329,12 @@ class App extends Component {
         }
       }
     }
-  };
+  }
 
-  standardizeData = () => {
+  /**
+   * Standardizes all data.
+   */
+  standardizeData() {
     // Neural network does NOT have predefined train mean and STD, calculate them and use that to standardize everything
     if (!this.ffnn.hasOwnProperty("trainMean")) {
       const mean = new Matrix(784, 1); // mean = sum(pixels) / numTrain
@@ -398,29 +396,42 @@ class App extends Component {
           .div(Matrix.map(std, (x) => x + EPSILON));
       }
     }
-  };
+  }
 
+  /**
+   * Makes predictions on the canvas input using FFNN and CNN and sets component state.
+   */
   handlePredict = () => {
-    if (this.ffnn !== undefined) {
-      const input = Matrix.vectorFromArray(this.canvasRef.current.predict());
+    if (this.ffnn !== undefined && this.cnn !== undefined) {
+      const inputArr = this.canvasRef.current.predict();
+      const ffnnInput = Matrix.vectorFromArray(inputArr);
+      const cnnInput = Matrix.matrixFromArray(inputArr, 28, 28);
 
       if (USE_STANDARDIZATION) {
-        input
+        ffnnInput
           .sub(this.ffnn.trainMean)
           .div(Matrix.map(this.ffnn.trainSTD, (x) => x + EPSILON));
       }
 
-      const ffnnOutputArr = this.ffnn.forward(input);
+      const ffnnOutputArr = this.ffnn.predict(ffnnInput);
       const ffnnPred = ffnnOutputArr.indexOf(Math.max(...ffnnOutputArr));
+
+      const cnnOutputArr = this.cnn.predict(cnnInput);
+      const cnnPred = cnnOutputArr.indexOf(Math.max(...cnnOutputArr));
 
       // Update state about prediction and displayed probabilities
       this.setState({
         ffnnOutputArr,
+        cnnOutputArr,
         ffnnPred,
+        cnnPred,
       });
     }
   };
 
+  /**
+   * Clears the canvas and resets component state.
+   */
   handleClear = () => {
     this.canvasRef.current.erase();
 
@@ -433,7 +444,7 @@ class App extends Component {
   };
 
   render() {
-    const testImages = [];
+    const sampleImages = [];
     for (let i = 0; i < 10; i++) {
       const cols = [];
 
@@ -460,7 +471,7 @@ class App extends Component {
           {cols}
         </div>
       );
-      testImages.push(row);
+      sampleImages.push(row);
     }
 
     const ffnnProbs = [];
@@ -521,7 +532,7 @@ class App extends Component {
             <h3>MNIST Samples:</h3>
           </div>
         </div>
-        {testImages}
+        {sampleImages}
         <div className="row justify-content-center pt-5">
           <div className="col-4 col-md-3 col-xl-2">
             <Button value="Predict" onClick={this.handlePredict} />

@@ -3,7 +3,7 @@
  * @param {Array} arr The array to shuffle
  * @return {Array} The shuffled array
  */
-export const shuffle = (arr) => {
+export function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const randomIndex = Math.floor(Math.random() * (i + 1));
     const temp = arr[i];
@@ -11,4 +11,4 @@ export const shuffle = (arr) => {
     arr[randomIndex] = temp;
   }
   return arr;
-};
+}

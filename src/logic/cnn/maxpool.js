@@ -1,10 +1,24 @@
 import Matrix from "../matrix";
 
 class MaxPool {
-  constructor(poolSize = 2) {
-    this.poolSize = poolSize;
+  /**
+   * Creates a max pool with the given size or loads the pool size from the given pool.
+   * @param {number} poolSize The pool size, square only, stride same as size
+   * @param {MaxPool} pool The preset pool, only containing size information
+   */
+  constructor(poolSize = 2, pool = null) {
+    if (pool !== null) {
+      this.poolSize = pool.poolSize;
+    } else {
+      this.poolSize = poolSize;
+    }
   }
 
+  /**
+   * Generator method for iterating over the image.
+   * @param {Matrix} image The image to iterate over
+   * @return {Array} The image region as a 2D Matrix and the coordinates of the region
+   */
   *iterateRegions(image) {
     const h = image.rows;
     const w = image.cols;
@@ -20,6 +34,11 @@ class MaxPool {
     }
   }
 
+  /**
+   * Feedforward on the max pool.
+   * @param {Array} input The array of input images passed through a conv layer
+   * @return {Array} An array of images processed by the max pool
+   */
   forward(input) {
     this.lastInput = input;
 
@@ -49,6 +68,11 @@ class MaxPool {
     return outputs;
   }
 
+  /**
+   * Backpropagation on the max pool.
+   * @param {Array} dLdOut Array of loss gradients w.r.t. the pool layer's outputs
+   * @return {Array} Array of loss gradients w.r.t. the pool layer's inputs
+   */
   backprop(dLdOut) {
     const dLdInputs = [];
 

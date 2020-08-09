@@ -17,7 +17,7 @@ const OUTPUT_NETWORK = true;
 
 class FFNN {
   /**
-   * Creates a FFNN with the givens layer sizes or using the preset settings from the optional FFNN.
+   * Creates a new FFNN with the givens layer sizes or loads a pretrained model.
    * @param {Array} sizes An array of layer sizes
    * @param {FFNN} ffnn Optional initial settings
    */
@@ -91,7 +91,7 @@ class FFNN {
    * @param {Matrix} input The input as a Matrix object (vector)
    * @return {Array} The result as an array
    */
-  forward = (input) => {
+  predict(input) {
     let output = input;
 
     for (let i = 0; i < this.numLayers - 1; i++) {
@@ -108,7 +108,7 @@ class FFNN {
     }
 
     return output.toArray();
-  };
+  }
 
   /**
    * Performs stochastic gradient descent with the specified hyperparameters.
@@ -119,14 +119,14 @@ class FFNN {
    * @param {number} regularization The regularization parameter
    * @param {Array} testDatas The optional test datas
    */
-  stochasticGradientDescent = (
+  stochasticGradientDescent(
     trainDatas,
     epochs,
     miniBatchSize,
     learningRate,
     regularization,
     testDatas = null
-  ) => {
+  ) {
     // Train datas = [trainData == [Matrix(input), Matrix(targetOutput)]]
     const trainDataSize = trainDatas.length;
 
@@ -219,7 +219,7 @@ class FFNN {
         console.log(JSON.stringify(this));
       }
     }
-  };
+  }
 
   /**
    * Updates the mini batch by getting the gradient and then applying it.
@@ -228,12 +228,7 @@ class FFNN {
    * @param {number} regularization The regularization parameter
    * @param {number} trainDataSize The size of the train data set
    */
-  updateMiniBatch = (
-    miniBatch,
-    learningRate,
-    regularization,
-    trainDataSize
-  ) => {
+  updateMiniBatch(miniBatch, learningRate, regularization, trainDataSize) {
     // Cumulative gradients for mini batch
     const biasesGradient = this.createEmptyGradient(this.biases);
     const weightsGradient = this.createEmptyGradient(this.weights);
@@ -284,7 +279,7 @@ class FFNN {
       // Weight adjustment by gradient
       this.weights[i].sub(weightsGradient[i].mul(learningRateWithAvg));
     }
-  };
+  }
 
   /**
    * Performs backpropagation to calculate the gradient for one train data.
@@ -292,14 +287,14 @@ class FFNN {
    * @param {Matrix} targetOutput The target output matrix
    * @return {Array} The array consisting of the biasesGradient and weightsGradient for this one train data
    */
-  backprop = (input, targetOutput) => {
+  backprop(input, targetOutput) {
     const biasesGradient = this.createEmptyGradient(this.biases);
     const weightsGradient = this.createEmptyGradient(this.weights);
 
     // Feedforward, store zs and activations by layer
     const zs = [];
     const activations = [input];
-    this.trainingForward(zs, activations);
+    this.forward(zs, activations);
 
     // Output error = lossDerivativeWRTa hadamardProduct outputActivationFunctionDerivative(outputZ)
     const outputError = this.lossFunction.outputError(
@@ -343,14 +338,14 @@ class FFNN {
     }
 
     return [biasesGradient, weightsGradient];
-  };
+  }
 
   /**
    * Feedforward, but also keeping record of the z's and activations per layer.
    * @param {Array} zs The array to store the z records
    * @param {Array} activations The array to store the activation records
    */
-  trainingForward = (zs, activations) => {
+  forward(zs, activations) {
     for (let i = 0; i < this.numLayers - 1; i++) {
       const bias = this.biases[i];
       const weight = this.weights[i];
@@ -366,33 +361,33 @@ class FFNN {
           : this.hiddenActivationFunction.fn(z);
       activations.push(a);
     }
-  };
+  }
 
   /**
    * Creates an empty gradient with the target array's shape.
    * @param {Array} arr The target array
    * @return {Array} The empty gradient array with in the shape of the target array
    */
-  createEmptyGradient = (arr) => {
+  createEmptyGradient(arr) {
     const gradient = [];
     for (let targetMatrix of arr) {
       const gradientMatrix = new Matrix(targetMatrix.rows, targetMatrix.cols);
       gradient.push(gradientMatrix);
     }
     return gradient;
-  };
+  }
 
   /**
    * Returns a count of how many test cases were passed.
    * @param {Array} testDatas The array of test datas
    * @return {number} The number of test cases passed
    */
-  accuracy = (testDatas) => {
+  accuracy(testDatas) {
     let count = 0;
 
     for (let testData of testDatas) {
       const input = testData[0];
-      const outputArr = this.forward(input);
+      const outputArr = this.predict(input);
       const targetOutputArr = testData[1].toArray();
       const outputInteger = outputArr.indexOf(Math.max(...outputArr));
       const targetOutputInteger = targetOutputArr.indexOf(
@@ -406,7 +401,7 @@ class FFNN {
     }
 
     return count;
-  };
+  }
 
   /**
    * Returns the train cost and correct count for the data set using the regularization parameter.
@@ -414,7 +409,7 @@ class FFNN {
    * @param {number} regularization The regularization parameter
    * @return {Array} The train cost and correct count
    */
-  trainCost = (datas, regularization) => {
+  trainCost(datas, regularization) {
     let cost = 0;
     let count = 0;
 
@@ -423,7 +418,7 @@ class FFNN {
       const input = data[0];
       const targetOutput = data[1];
 
-      const outputArr = this.forward(input);
+      const outputArr = this.predict(input);
       const targetOutputArr = targetOutput.toArray();
       const outputInteger = outputArr.indexOf(Math.max(...outputArr));
       const targetOutputInteger = targetOutputArr.indexOf(
@@ -453,7 +448,7 @@ class FFNN {
     }
 
     return [cost, count];
-  };
+  }
 
   /**
    * Performs gradient checking technique, manually calculating the gradient using the limit definition the derivative and a small epsilon.
@@ -463,7 +458,7 @@ class FFNN {
    * @param {Matrix} targetOutput The targed output matrix
    * @return {number} The euclidean norm ratio which should be less than 10^-7
    */
-  gradientCheck = (gradient, weightOrBias, input, targetOutput) => {
+  gradientCheck(gradient, weightOrBias, input, targetOutput) {
     const targetOutputArr = targetOutput.toArray();
     const epsilon = 10 ** -7;
     const gradApprox = this.createEmptyGradient(gradient);
@@ -476,7 +471,7 @@ class FFNN {
 
           // Calculate the loss with plus epsilon
           weightOrBias[i].data[r][c] = original + epsilon;
-          const outputPlus = this.forward(input);
+          const outputPlus = this.predict(input);
           let lossPlus = 0;
           for (let j = 0; j < outputPlus.length; j++) {
             lossPlus += 0.5 * (targetOutputArr[j] - outputPlus[j]) ** 2;
@@ -484,7 +479,7 @@ class FFNN {
 
           // Calculate the loss with minus epsilon
           weightOrBias[i].data[r][c] = original - epsilon;
-          const outputMinus = this.forward(input);
+          const outputMinus = this.predict(input);
           let lossMinus = 0;
           for (let j = 0; j < outputMinus.length; j++) {
             lossMinus += 0.5 * (targetOutputArr[j] - outputMinus[j]) ** 2;
@@ -521,7 +516,7 @@ class FFNN {
     return (
       Math.sqrt(errorSum) / (Math.sqrt(paramApproxSum) + Math.sqrt(paramSum))
     );
-  };
+  }
 
   /**
    * Automation for choosing the regularization parameter.
@@ -529,7 +524,7 @@ class FFNN {
    * @param {Array} valDatas The array of validation datas
    * @param {Array} testDatas The array of test datas
    */
-  static chooseHypeparameters = (trainDatas, valDatas, testDatas) => {
+  static chooseHypeparameters(trainDatas, valDatas, testDatas) {
     const miniBatchOptions = [1, 10, 20, 50, 100];
     const learningRateOptions = [0.01, 0.03, 0.1, 0.3, 1, 3, 10];
     const regularizationOptions = [0.01, 0.03, 0.1, 0.3, 1, 3, 10];
@@ -599,7 +594,7 @@ class FFNN {
 
     // Log the best neural network
     console.log("Best network:", JSON.stringify(bestNetwork));
-  };
+  }
 }
 
 export default FFNN;
