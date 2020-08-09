@@ -1,27 +1,27 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "1fa968f35ecdbd4a2c17ba8e7a6951d6",
+    "revision": "423ff07d02722f267879c0a1f346cf49",
     "url": "/digit-recognizer/index.html"
   },
   {
-    "revision": "0862cf20a40f8e2462db",
+    "revision": "9d532309d8a55df14eb9",
     "url": "/digit-recognizer/static/css/2.89f067aa.chunk.css"
   },
   {
-    "revision": "ef13cd2660f0de461ab1",
+    "revision": "9eb629c7ab5694122b95",
     "url": "/digit-recognizer/static/css/main.fa8e07e5.chunk.css"
   },
   {
-    "revision": "0862cf20a40f8e2462db",
-    "url": "/digit-recognizer/static/js/2.4d3f52eb.chunk.js"
+    "revision": "9d532309d8a55df14eb9",
+    "url": "/digit-recognizer/static/js/2.877a7f6e.chunk.js"
   },
   {
     "revision": "99bd0487192ec9e7d9ee8fbbd91ee444",
-    "url": "/digit-recognizer/static/js/2.4d3f52eb.chunk.js.LICENSE.txt"
+    "url": "/digit-recognizer/static/js/2.877a7f6e.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "ef13cd2660f0de461ab1",
-    "url": "/digit-recognizer/static/js/main.a0bb8636.chunk.js"
+    "revision": "9eb629c7ab5694122b95",
+    "url": "/digit-recognizer/static/js/main.ace0680b.chunk.js"
   },
   {
     "revision": "544fc0658d70e35c5d38",
