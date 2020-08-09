@@ -1,13 +1,14 @@
-import Matrix from "./matrix";
+import Matrix from "../matrix";
 import {
   SigmoidActivation,
   ReLUActivation,
   LeakyReLUActivation,
   SoftmaxActivation,
-  QuadraticCost,
-  CrossEntropyCost,
-  shuffle,
-} from "./helpers";
+  QuadraticLoss,
+  BinaryCrossEntropyLoss,
+  CrossEntropyLoss,
+} from "./ffnn-helpers";
+import { shuffle } from "../utils";
 
 const CHECK_GRADIENTS = false;
 const LOG_MINI_BATCH_ACCURACY = false;
@@ -23,7 +24,7 @@ class FFNN {
   constructor(sizes, ffnn) {
     this.hiddenActivationFunction = ReLUActivation;
     this.outputActivationFunction = SoftmaxActivation;
-    this.cost = CrossEntropyCost;
+    this.lossFunction = BinaryCrossEntropyLoss;
 
     if (ffnn) {
       // Deep copy
@@ -90,7 +91,7 @@ class FFNN {
    * @param {Matrix} input The input as a Matrix object (vector)
    * @return {Array} The result as an array
    */
-  feedforward = (input) => {
+  forward = (input) => {
     let output = input;
 
     for (let i = 0; i < this.numLayers - 1; i++) {
@@ -126,7 +127,7 @@ class FFNN {
     regularization,
     testDatas = null
   ) => {
-    // Train datas = [trainData == [Matrix(input), Matrix(desiredOutput)]]
+    // Train datas = [trainData == [Matrix(input), Matrix(targetOutput)]]
     const trainDataSize = trainDatas.length;
 
     // Train for specified number of epochs
@@ -134,13 +135,13 @@ class FFNN {
       // Shuffle the train datas every epoch
       shuffle(trainDatas);
 
-      // Mini batches = [miniBatch == [trainData == [Matrix(input), Matrix(desiredOutput)]]]
+      // Mini batches = [miniBatch == [trainData == [Matrix(input), Matrix(targetOutput)]]]
       const miniBatches = [];
       for (let j = 0; j < trainDataSize; j += miniBatchSize) {
-        // Mini batch = [trainData == [Matrix(input), Matrix(desiredOutput)]]
+        // Mini batch = [trainData == [Matrix(input), Matrix(targetOutput)]]
         const miniBatch = [];
 
-        // Train data = [Matrix(input), Matrix(desiredOutput)]
+        // Train data = [Matrix(input), Matrix(targetOutput)]
         for (let k = j; k < j + miniBatchSize; k++) {
           miniBatch.push(trainDatas[k]);
         }
@@ -240,8 +241,8 @@ class FFNN {
     // Calculates the cumulative biases and weights gradients for all train data in the mini batch
     for (let trainData of miniBatch) {
       const input = trainData[0];
-      const desiredOutput = trainData[1];
-      const gradientDelta = this.backpropagate(input, desiredOutput);
+      const targetOutput = trainData[1];
+      const gradientDelta = this.backprop(input, targetOutput);
       const biasesGradientDelta = gradientDelta[0];
       const weightsGradientDelta = gradientDelta[1];
 
@@ -251,14 +252,14 @@ class FFNN {
           biasesGradientDelta,
           this.biases,
           input,
-          desiredOutput
+          targetOutput
         );
         console.log("Gradient check biases:", biasesCheck);
         const weightsCheck = this.gradientCheck(
           weightsGradientDelta,
           this.weights,
           input,
-          desiredOutput
+          targetOutput
         );
         console.log("Gradient check weights:", weightsCheck);
       }
@@ -288,23 +289,23 @@ class FFNN {
   /**
    * Performs backpropagation to calculate the gradient for one train data.
    * @param {Matrix} input The input matrix
-   * @param {Matrix} desiredOutput The desired output matrix
+   * @param {Matrix} targetOutput The target output matrix
    * @return {Array} The array consisting of the biasesGradient and weightsGradient for this one train data
    */
-  backpropagate = (input, desiredOutput) => {
+  backprop = (input, targetOutput) => {
     const biasesGradient = this.createEmptyGradient(this.biases);
     const weightsGradient = this.createEmptyGradient(this.weights);
 
     // Feedforward, store zs and activations by layer
     const zs = [];
     const activations = [input];
-    this.trainingFeedforward(zs, activations);
+    this.trainingForward(zs, activations);
 
-    // Output error = costDerivativeWRTa hadamardProduct outputActivationFunctionDerivative(outputZ)
-    const outputError = this.cost.outputError(
+    // Output error = lossDerivativeWRTa hadamardProduct outputActivationFunctionDerivative(outputZ)
+    const outputError = this.lossFunction.outputError(
       zs[zs.length - 1],
       activations[activations.length - 1],
-      desiredOutput,
+      targetOutput,
       this.outputActivationFunction
     );
 
@@ -349,7 +350,7 @@ class FFNN {
    * @param {Array} zs The array to store the z records
    * @param {Array} activations The array to store the activation records
    */
-  trainingFeedforward = (zs, activations) => {
+  trainingForward = (zs, activations) => {
     for (let i = 0; i < this.numLayers - 1; i++) {
       const bias = this.biases[i];
       const weight = this.weights[i];
@@ -369,12 +370,12 @@ class FFNN {
 
   /**
    * Creates an empty gradient with the target array's shape.
-   * @param {Array} target The target array
+   * @param {Array} arr The target array
    * @return {Array} The empty gradient array with in the shape of the target array
    */
-  createEmptyGradient = (target) => {
+  createEmptyGradient = (arr) => {
     const gradient = [];
-    for (let targetMatrix of target) {
+    for (let targetMatrix of arr) {
       const gradientMatrix = new Matrix(targetMatrix.rows, targetMatrix.cols);
       gradient.push(gradientMatrix);
     }
@@ -391,15 +392,15 @@ class FFNN {
 
     for (let testData of testDatas) {
       const input = testData[0];
-      const outputArr = this.feedforward(input);
-      const desiredOutputArr = testData[1].toArray();
+      const outputArr = this.forward(input);
+      const targetOutputArr = testData[1].toArray();
       const outputInteger = outputArr.indexOf(Math.max(...outputArr));
-      const desiredOutputInteger = desiredOutputArr.indexOf(
-        Math.max(...desiredOutputArr)
+      const targetOutputInteger = targetOutputArr.indexOf(
+        Math.max(...targetOutputArr)
       );
 
       // Count number correct
-      if (outputInteger === desiredOutputInteger) {
+      if (outputInteger === targetOutputInteger) {
         count++;
       }
     }
@@ -417,26 +418,26 @@ class FFNN {
     let cost = 0;
     let count = 0;
 
-    // Add cost of each data point
+    // Add loss of each data point
     for (let data of datas) {
       const input = data[0];
-      const desiredOutput = data[1];
+      const targetOutput = data[1];
 
-      const outputArr = this.feedforward(input);
-      const desiredOutputArr = desiredOutput.toArray();
+      const outputArr = this.forward(input);
+      const targetOutputArr = targetOutput.toArray();
       const outputInteger = outputArr.indexOf(Math.max(...outputArr));
-      const desiredOutputInteger = desiredOutputArr.indexOf(
-        Math.max(...desiredOutputArr)
+      const targetOutputInteger = targetOutputArr.indexOf(
+        Math.max(...targetOutputArr)
       );
 
       // Count correct
-      if (outputInteger === desiredOutputInteger) {
+      if (outputInteger === targetOutputInteger) {
         count++;
       }
 
       // Output cost
       cost +=
-        this.cost.fn(Matrix.vectorFromArray(outputArr), desiredOutput) /
+        this.lossFunction.fn(Matrix.vectorFromArray(outputArr), targetOutput) /
         datas.length;
 
       // Regularization cost
@@ -457,44 +458,44 @@ class FFNN {
   /**
    * Performs gradient checking technique, manually calculating the gradient using the limit definition the derivative and a small epsilon.
    * @param {Array} gradient The gradient to check
-   * @param {Array} target A reference to the neural network's biases or weights
+   * @param {Array} weightOrBias A reference to the neural network's biases or weights
    * @param {Matrix} input The input matrix
-   * @param {Matrix} desiredOutput The desired output matrix
+   * @param {Matrix} targetOutput The targed output matrix
    * @return {number} The euclidean norm ratio which should be less than 10^-7
    */
-  gradientCheck = (gradient, target, input, desiredOutput) => {
-    const desiredArr = desiredOutput.toArray();
-    const epsilon = Math.pow(10, -7);
+  gradientCheck = (gradient, weightOrBias, input, targetOutput) => {
+    const targetOutputArr = targetOutput.toArray();
+    const epsilon = 10 ** -7;
     const gradApprox = this.createEmptyGradient(gradient);
 
     for (let i = 0; i < gradApprox.length; i++) {
       for (let r = 0; r < gradApprox[i].rows; r++) {
         for (let c = 0; c < gradApprox[i].cols; c++) {
           // Save the original bias or weight value to restore it at the end
-          const original = target[i].data[r][c];
+          const original = weightOrBias[i].data[r][c];
 
-          // Calculate the cost with plus epsilon
-          target[i].data[r][c] = original + epsilon;
-          const outputPlus = this.feedforward(input);
-          let costPlus = 0;
+          // Calculate the loss with plus epsilon
+          weightOrBias[i].data[r][c] = original + epsilon;
+          const outputPlus = this.forward(input);
+          let lossPlus = 0;
           for (let j = 0; j < outputPlus.length; j++) {
-            costPlus += 0.5 * Math.pow(desiredArr[j] - outputPlus[j], 2);
+            lossPlus += 0.5 * (targetOutputArr[j] - outputPlus[j]) ** 2;
           }
 
-          // Calculate the cost with minus epsilon
-          target[i].data[r][c] = original - epsilon;
-          const outputMinus = this.feedforward(input);
-          let costMinus = 0;
+          // Calculate the loss with minus epsilon
+          weightOrBias[i].data[r][c] = original - epsilon;
+          const outputMinus = this.forward(input);
+          let lossMinus = 0;
           for (let j = 0; j < outputMinus.length; j++) {
-            costMinus += 0.5 * Math.pow(desiredArr[j] - outputMinus[j], 2);
+            lossMinus += 0.5 * (targetOutputArr[j] - outputMinus[j]) ** 2;
           }
 
           // Limit definition of derivative
-          const gradApproxVal = (costPlus - costMinus) / (2 * epsilon);
+          const gradApproxVal = (lossPlus - lossMinus) / (2 * epsilon);
           gradApprox[i].data[r][c] = gradApproxVal;
 
           // Restore the initial bias or weight value
-          target[i].data[r][c] = original;
+          weightOrBias[i].data[r][c] = original;
         }
       }
     }
@@ -510,9 +511,9 @@ class FFNN {
           const gradientVal = gradient[i].data[r][c];
           const gradApproxVal = gradApprox[i].data[r][c];
 
-          paramSum += Math.pow(gradientVal, 2);
-          paramApproxSum += Math.pow(gradApproxVal, 2);
-          errorSum += Math.pow(gradApproxVal - gradientVal, 2);
+          paramSum += gradientVal ** 2;
+          paramApproxSum += gradApproxVal ** 2;
+          errorSum += (gradApproxVal - gradientVal) ** 2;
         }
       }
     }

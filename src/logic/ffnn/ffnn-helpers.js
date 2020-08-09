@@ -1,4 +1,4 @@
-import Matrix from "./matrix";
+import Matrix from "../matrix";
 
 /**
  * The sigmoid activation function and derivative.
@@ -99,24 +99,24 @@ export class SoftmaxActivation {
 }
 
 /**
- * The quadratic cost function and output layer error.
+ * The quadratic loss function and output layer error.
  */
-export class QuadraticCost {
+export class QuadraticLoss {
   /**
-   * Returns the cost = sum over all (0.5 * (a - y)^2).
+   * Returns the loss = sum over all (0.5 * (a - y)^2).
    * @param {Matrix} a The activation of the output layer
    * @param {Matrix} y The desired output
-   * @return {number} The cost
+   * @return {number} The loss
    */
   static fn = (a, y) => {
     const diffMatrix = Matrix.sub(a, y);
-    let cost = 0;
+    let loss = 0;
     for (let r = 0; r < diffMatrix.rows; r++) {
       for (let c = 0; c < diffMatrix.cols; c++) {
-        cost += 0.5 * diffMatrix.data[r][c] ** 2;
+        loss += 0.5 * diffMatrix.data[r][c] ** 2;
       }
     }
-    return cost;
+    return loss;
   };
 
   /**
@@ -128,22 +128,22 @@ export class QuadraticCost {
    * @return {Matrix} The output error
    */
   static outputError = (z, a, y, outputActivationFunction) => {
-    const costDerivativeWRTa = Matrix.sub(a, y);
-    return costDerivativeWRTa.mul(outputActivationFunction.derivative(z));
+    const lossDerivativeWRTa = Matrix.sub(a, y);
+    return lossDerivativeWRTa.mul(outputActivationFunction.derivative(z));
   };
 }
 
 const EPSILON = 10 ** -100;
 
 /**
- * The cross entropy cost function and output layer error.
+ * The binary cross entropy loss function and output layer error.
  */
-export class CrossEntropyCost {
+export class BinaryCrossEntropyLoss {
   /**
-   * Returns the cost = sum over all -(y * ln(a) + (1 - y) * ln(1 - a)).
+   * Returns the loss = sum over all -(y * ln(a) + (1 - y) * ln(1 - a)).
    * @param {Matrix} a The activation of the output layer
    * @param {Matrix} y The desired output
-   * @return {number} The cost
+   * @return {number} The loss
    */
   static fn = (a, y) => {
     const yIsOne = Matrix.mul(
@@ -169,30 +169,55 @@ export class CrossEntropyCost {
    * @param {Matrix} a The activation of the output layer
    * @param {Matrix} y The desired output
    * @param {Function} outputActivationFunction The activation function of the output layer
-   * @return {Matrix} The derivative with respect to a
+   * @return {Matrix} The output error matrix
    */
   static outputError = (z, a, y, outputActivationFunction) => {
-    const costDerivativeWRTa = Matrix.sub(a, y).mul(
+    const lossDerivativeWRTa = Matrix.sub(a, y).div(
       Matrix.map(a, (a_i) => {
         // Add small epsilon so never divide by zero
-        return 1 / (a_i * (1 - a_i) + EPSILON);
+        return a_i * (1 - a_i) + EPSILON;
       })
     );
-    return costDerivativeWRTa.mul(outputActivationFunction.derivative(z));
+    return lossDerivativeWRTa.mul(outputActivationFunction.derivative(z));
   };
 }
 
 /**
- * Fisher-Yates shuffle.
- * @param {Array} arr The array to shuffle
- * @return {Array} The shuffled array
+ * The cross entropy loss function and output layer error.
  */
-export const shuffle = (arr) => {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const randomIndex = Math.floor(Math.random() * (i + 1));
-    const temp = arr[i];
-    arr[i] = arr[randomIndex];
-    arr[randomIndex] = temp;
-  }
-  return arr;
-};
+export class CrossEntropyLoss {
+  /**
+   * Returns the loss = sum over all -y * ln(a).
+   * @param {Matrix} a The activation of the output layer
+   * @param {Matrix} y The desired output
+   * @return {number} The loss
+   */
+  static fn = (a, y) => {
+    const loss = Matrix.mul(
+      Matrix.transpose(y),
+      Matrix.map(a, (a_i) => {
+        // Add small epsilon so if a_i = 0, not doing log(0)
+        return Math.log(a_i + EPSILON);
+      })
+    );
+    return -loss.data[0][0];
+  };
+
+  /**
+   * Returns the output error = (-y / a) hadamardProduct outputActivationFunctionDerivative(z).
+   * @param {Matrix} z The z of the output layer
+   * @param {Matrix} a The activation of the output layer
+   * @param {Matrix} y The desired output
+   * @param {Function} outputActivationFunction The activation function of the output layer
+   * @return {Matrix} The output error matrix
+   */
+  static outputError = (z, a, y, outputActivationFunction) => {
+    const lossDerivativeWRTa = Matrix.map(y, (y_i) => -y_i).div(
+      Matrix.map(a, (a_i) => {
+        // Add small epsilon so never divide by zero
+        return a_i + EPSILON;
+      })
+    );
+    return lossDerivativeWRTa.mul(outputActivationFunction.derivative(z));
+  };
+}

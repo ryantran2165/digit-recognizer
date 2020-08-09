@@ -2,30 +2,35 @@ import React, { Component } from "react";
 import Title from "./components/title";
 import Description from "./components/description";
 import Button from "./components/button";
-import FFNN from "./logic/ffnn";
-import Matrix from "./logic/matrix";
-import loadMNIST from "./logic/mnist";
-import ffnnModel from "./models/ffnn-model.json";
-import GithubCorner from "react-github-corner";
 import Canvas from "./components/canvas";
+import GithubCorner from "react-github-corner";
+import loadMNIST from "./logic/mnist";
+import mnistSamples from "./data/mnist-samples.json";
+import ffnnModel from "./data/ffnn-model.json";
+import Matrix from "./logic/matrix";
+import FFNN from "./logic/ffnn/ffnn";
+import CNN from "./logic/cnn/cnn";
 
-const TRAIN_NET = false;
-const NEW_NET = false;
+const TRAIN_FFNN = false;
+const TRAIN_CNN = true;
+const NEW_FFNN = false;
+const NEW_CNN = true;
 const USE_STANDARDIZATION = false;
 
-const LOAD_TRAIN = false;
+const LOAD_TRAIN = true;
 const LOAD_VAL = false;
 const LOAD_TEST = true;
 
-const OUTPUT_ACCURACY = false;
+const OUTPUT_FFNN_ACCURACY = false;
+const OUTPUT_CNN_ACCURACY = false;
 const OUTPUT_MNIST = false;
 
-const NUM_TRAIN = 50000;
+const NUM_TRAIN = 300;
 const NUM_VAL = 10000;
-const NUM_TEST = 150;
+const NUM_TEST = 100;
 const EPSILON = 10 ** -100;
 
-const NUM_TEST_SAMPLES = 5;
+const NUM_MNIST_SAMPLES = 5;
 
 class App extends Component {
   constructor(props) {
@@ -37,97 +42,163 @@ class App extends Component {
       cnnPred: "",
     };
 
-    loadMNIST((data) => {
-      this.mnist = data;
-      console.log("All files loaded");
+    if (TRAIN_FFNN || TRAIN_CNN) {
+      loadMNIST((data) => {
+        this.mnist = data;
+        console.log("All files loaded");
 
-      if (OUTPUT_MNIST) {
-        console.log(this.mnist);
-      }
-
-      this.formatData();
-      if (USE_STANDARDIZATION) {
-        this.standardizeData();
-      } else {
-        this.normalizeData();
-      }
-
-      this.showSamples();
-
-      if (TRAIN_NET) {
-        console.log("Starting training");
-
-        if (NEW_NET) {
-          this.ffnn = new FFNN([784, 30, 10]);
-        } else {
-          this.ffnn = new FFNN(null, ffnnModel);
+        if (OUTPUT_MNIST) {
+          console.log(this.mnist);
         }
 
-        // Remember to use much smaller learning rate when using ReLU
-        this.ffnn.stochasticGradientDescent(
-          this.trainDatas,
-          1,
-          10,
-          0.03,
-          1.0,
-          this.testDatas
-        );
-      } else {
-        this.ffnn = new FFNN(null, ffnnModel);
+        this.formatData();
+        this.normalizeData();
+        if (USE_STANDARDIZATION) {
+          this.standardizeData();
+        }
 
-        if (OUTPUT_ACCURACY) {
-          const accuracy = this.ffnn.accuracy(this.testDatas);
-          console.log(
-            "Accuracy: " +
-              accuracy +
-              "/" +
-              this.testDatas.length +
-              ", " +
-              (100 * accuracy) / this.testDatas.length +
-              "%"
+        if (TRAIN_FFNN) {
+          console.log("Starting FFNN training");
+
+          if (NEW_FFNN) {
+            this.ffnn = new FFNN([784, 30, 10]);
+          } else {
+            this.ffnn = new FFNN(null, ffnnModel);
+          }
+
+          // Remember to use much smaller learning rate when using ReLU
+          this.ffnn.stochasticGradientDescent(
+            this.ffnnTrainDatas,
+            1,
+            10,
+            0.03,
+            1.0,
+            this.ffnnTestDatas
           );
         }
+
+        if (TRAIN_CNN) {
+          console.log("Starting CNN training");
+
+          if (NEW_CNN) {
+            this.cnn = new CNN();
+          } else {
+            // this.cnn = new CNN(cnnModel);
+          }
+
+          this.cnn.train(this.cnnTrainDatas, 1, 0.005, this.cnnTestDatas);
+
+          // const out = this.cnn.train(
+          //   this.cnnTrainDatas,
+          //   1,
+          //   0.005,
+          //   this.cnnTestDatas
+          // );
+
+          // const canvas28 = document.getElementById("canvas28");
+          // const ctx28 = canvas28.getContext("2d");
+          // ctx28.clearRect(0, 0, canvas28.width, canvas28.height);
+
+          // for (let y = 0; y < 13; y++) {
+          //   for (let x = 0; x < 13; x++) {
+          //     const block = ctx28.getImageData(x, y, 1, 1);
+          //     const newVal = 255 * 9 * out[0].data[y][x];
+
+          //     block.data[0] = newVal;
+          //     block.data[1] = newVal;
+          //     block.data[2] = newVal;
+          //     block.data[3] = 255;
+
+          //     ctx28.putImageData(block, x, y);
+          //   }
+          // }
+        }
+      });
+    } else {
+      this.ffnn = new FFNN(null, ffnnModel);
+      if (OUTPUT_FFNN_ACCURACY) {
+        const accuracy = this.ffnn.accuracy(this.ffnnTestDatas);
+        console.log(
+          "Accuracy: " +
+            accuracy +
+            "/" +
+            this.ffnnTestDatas.length +
+            ", " +
+            (100 * accuracy) / this.ffnnTestDatas.length +
+            "%"
+        );
       }
-    });
+
+      // this.cnn = new CNN(cnnModel);
+      if (OUTPUT_CNN_ACCURACY) {
+        const accuracy = this.cnn.accuracy(this.cnnTestDatas);
+        console.log(
+          "Accuracy: " +
+            accuracy +
+            "/" +
+            this.cnnTestDatas.length +
+            ", " +
+            (100 * accuracy) / this.cnnTestDatas.length +
+            "%"
+        );
+      }
+    }
 
     this.canvasRef = React.createRef();
   }
 
-  showSamples = () => {
-    // Find test images for digit i
+  componentDidMount() {
+    // this.saveSamples();
+    this.showSamples();
+  }
+
+  saveSamples = () => {
+    const samples = [];
+
+    // For each digit
     for (let i = 0; i < 10; i++) {
-      let testImages = [];
+      const sampleImages = [];
 
-      for (let testData of this.testDatas) {
-        const labelArr = testData[1].toArray();
-        const label = labelArr.indexOf(Math.max(...labelArr));
+      // Find digit samples from test set
+      for (let j = 0; j < this.mnist.testImages.length; j++) {
+        if (this.mnist.testLabels[j] === i) {
+          sampleImages.push(Array.from(this.mnist.testImages[j]));
 
-        // Found digit
-        if (label === i) {
-          testImages.push(testData[0].toArray());
-
-          // Found required number of digits
-          if (testImages.length === NUM_TEST_SAMPLES) {
+          // Found desired number of samples
+          if (sampleImages.length === NUM_MNIST_SAMPLES) {
             break;
           }
         }
       }
 
-      // Display sample test images
-      for (let j = 0; j < 5; j++) {
+      samples.push(sampleImages);
+    }
+
+    console.log(JSON.stringify(samples));
+  };
+
+  showSamples = () => {
+    // For each digit
+    for (let i = 0; i < 10; i++) {
+      // For the desired number of samples
+      for (let j = 0; j < NUM_MNIST_SAMPLES; j++) {
+        // Retrieve canvas and context
         const canvas = document.getElementById(`canvas-${i}-${j}`);
         const ctx = canvas.getContext("2d");
 
         for (let y = 0; y < 28; y++) {
           for (let x = 0; x < 28; x++) {
+            // Create single pixel block and retrieve saved pixel
             const block = ctx.createImageData(1, 1);
-            const newVal = 255 * testImages[j][y * 28 + x];
+            const newVal = 255 * mnistSamples[i][j][y * 28 + x];
 
+            // Assign loaded pixel value
             block.data[0] = newVal;
             block.data[1] = newVal;
             block.data[2] = newVal;
             block.data[3] = 255;
 
+            // Draw to canvas
             ctx.putImageData(block, x, y);
           }
         }
@@ -138,52 +209,131 @@ class App extends Component {
   formatData = () => {
     if (LOAD_TRAIN) {
       console.log("Formatting train data");
-      this.trainDatas = this.loadDatas(
-        this.mnist.trainImages.slice(0, NUM_TRAIN),
-        this.mnist.trainLabels.slice(0, NUM_TRAIN)
-      );
+      if (TRAIN_FFNN) {
+        this.ffnnTrainDatas = this.loadDatas(
+          this.mnist.trainImages.slice(0, NUM_TRAIN),
+          this.mnist.trainLabels.slice(0, NUM_TRAIN),
+          true
+        );
+      }
+      if (TRAIN_CNN) {
+        this.cnnTrainDatas = this.loadDatas(
+          this.mnist.trainImages.slice(0, NUM_TRAIN),
+          this.mnist.trainLabels.slice(0, NUM_TRAIN),
+          false
+        );
+      }
     }
 
     if (LOAD_VAL) {
       console.log("Formatting validation data");
-      this.valDatas = this.loadDatas(
-        this.mnist.trainImages.slice(NUM_TRAIN, NUM_TRAIN + NUM_VAL),
-        this.mnist.trainLabels.slice(NUM_TRAIN, NUM_TRAIN + NUM_VAL)
-      );
+      if (TRAIN_FFNN) {
+        this.ffnnValDatas = this.loadDatas(
+          this.mnist.trainImages.slice(NUM_TRAIN, NUM_TRAIN + NUM_VAL),
+          this.mnist.trainLabels.slice(NUM_TRAIN, NUM_TRAIN + NUM_VAL),
+          true
+        );
+      }
+      if (TRAIN_CNN) {
+        this.cnnValDatas = this.loadDatas(
+          this.mnist.trainImages.slice(NUM_TRAIN, NUM_TRAIN + NUM_VAL),
+          this.mnist.trainLabels.slice(NUM_TRAIN, NUM_TRAIN + NUM_VAL),
+          false
+        );
+      }
     }
 
     if (LOAD_TEST) {
       console.log("Formatting test data");
-      this.testDatas = this.loadDatas(
-        this.mnist.testImages.slice(0, NUM_TEST),
-        this.mnist.testLabels.slice(0, NUM_TEST)
-      );
+      if (TRAIN_FFNN) {
+        this.ffnnTestDatas = this.loadDatas(
+          this.mnist.testImages.slice(0, NUM_TEST),
+          this.mnist.testLabels.slice(0, NUM_TEST),
+          true
+        );
+      }
+      if (TRAIN_CNN) {
+        this.cnnTestDatas = this.loadDatas(
+          this.mnist.testImages.slice(0, NUM_TEST),
+          this.mnist.testLabels.slice(0, NUM_TEST),
+          false
+        );
+      }
     }
   };
 
-  loadDatas = (images, labels) => {
+  loadDatas = (images, labels, isFFNN) => {
     const datas = [];
 
     for (let i = 0; i < images.length; i++) {
       const inputArr = images[i];
-      const desiredInteger = labels[i];
-      const desiredArr = [];
+      const targetInt = labels[i];
+      const targetArr = [];
 
       for (let j = 0; j < 10; j++) {
-        if (desiredInteger === j) {
-          desiredArr.push(1);
+        if (targetInt === j) {
+          targetArr.push(1);
         } else {
-          desiredArr.push(0);
+          targetArr.push(0);
         }
       }
 
       datas.push([
-        Matrix.vectorFromArray(inputArr),
-        Matrix.vectorFromArray(desiredArr),
+        isFFNN
+          ? Matrix.vectorFromArray(inputArr)
+          : Matrix.matrixFromArray(inputArr, 28, 28),
+        Matrix.vectorFromArray(targetArr),
       ]);
     }
 
     return datas;
+  };
+
+  normalizeData = () => {
+    // Normalize train images
+    if (LOAD_TRAIN) {
+      console.log("Normalizing train data");
+      if (TRAIN_FFNN) {
+        for (let trainData of this.ffnnTrainDatas) {
+          trainData[0].div(255);
+        }
+      }
+      if (TRAIN_CNN) {
+        for (let trainData of this.cnnTrainDatas) {
+          trainData[0].div(255);
+        }
+      }
+    }
+
+    // Normalize validation images
+    if (LOAD_VAL) {
+      console.log("Normalizing validation data");
+      if (TRAIN_FFNN) {
+        for (let valData of this.ffnnValDatas) {
+          valData[0].div(255);
+        }
+      }
+      if (TRAIN_CNN) {
+        for (let valData of this.cnnValDatas) {
+          valData[0].div(255);
+        }
+      }
+    }
+
+    // Normalize test images
+    if (LOAD_TEST) {
+      console.log("Normalizing test data");
+      if (TRAIN_FFNN) {
+        for (let testData of this.ffnnTestDatas) {
+          testData[0].div(255);
+        }
+      }
+      if (TRAIN_CNN) {
+        for (let testData of this.cnnTestDatas) {
+          testData[0].div(255);
+        }
+      }
+    }
   };
 
   standardizeData = () => {
@@ -194,21 +344,21 @@ class App extends Component {
 
       // Calculate sum(pixels)
       console.log("Calculating train data mean");
-      for (let trainData of this.trainDatas) {
+      for (let trainData of this.ffnnTrainDatas) {
         mean.add(trainData[0]);
       }
 
       // Divide by total number of train datas
-      mean.map((x) => x / this.trainDatas.length);
+      mean.map((x) => x / this.ffnnTrainDatas.length);
 
       // Calculate sum((pixels - mean)^2)
       console.log("Calculating train data standard deviation");
-      for (let trainData of this.trainDatas) {
+      for (let trainData of this.ffnnTrainDatas) {
         std.add(Matrix.sub(trainData[0], mean).map((x) => x ** 2));
       }
 
       // Divide by total number of train datas and square root
-      std.map((x) => Math.sqrt(x / this.trainDatas.length));
+      std.map((x) => Math.sqrt(x / this.ffnnTrainDatas.length));
 
       // Save to neural network
       this.ffnn.trainMean = mean;
@@ -222,49 +372,30 @@ class App extends Component {
     // Standardize train images, add small epsilon so never divide by zero
     if (LOAD_TRAIN) {
       console.log("Standardizing train data");
-      for (let i = 0; i < this.trainDatas.length; i++) {
-        this.trainDatas[i][0]
+      for (let i = 0; i < this.ffnnTrainDatas.length; i++) {
+        this.ffnnTrainDatas[i][0]
           .sub(mean)
           .div(Matrix.map(std, (x) => x + EPSILON));
       }
     }
 
+    // Standardize validation images, add small epsilon so never divide by zero
     if (LOAD_VAL) {
-      // Standardize validation images, add small epsilon so never divide by zero
       console.log("Standardizing validation data");
-      for (let i = 0; i < this.valDatas.length; i++) {
-        this.valDatas[i][0].sub(mean).div(Matrix.map(std, (x) => x + EPSILON));
+      for (let i = 0; i < this.ffnnValDatas.length; i++) {
+        this.ffnnValDatas[i][0]
+          .sub(mean)
+          .div(Matrix.map(std, (x) => x + EPSILON));
       }
     }
 
+    // Standardize test images, add small epsilon so never divide by zero
     if (LOAD_TEST) {
-      // Standardize test images, add small epsilon so never divide by zero
       console.log("Standardizing test data");
-      for (let i = 0; i < this.testDatas.length; i++) {
-        this.testDatas[i][0].sub(mean).div(Matrix.map(std, (x) => x + EPSILON));
-      }
-    }
-  };
-
-  normalizeData = () => {
-    // Normalize train images
-    if (LOAD_TRAIN) {
-      for (let trainData of this.trainDatas) {
-        trainData[0].div(255);
-      }
-    }
-
-    if (LOAD_VAL) {
-      // Normalize validation images
-      for (let valData of this.valDatas) {
-        valData[0].div(255);
-      }
-    }
-
-    if (LOAD_TEST) {
-      // Normalize test images
-      for (let testData of this.testDatas) {
-        testData[0].div(255);
+      for (let i = 0; i < this.ffnnTestDatas.length; i++) {
+        this.ffnnTestDatas[i][0]
+          .sub(mean)
+          .div(Matrix.map(std, (x) => x + EPSILON));
       }
     }
   };
@@ -272,18 +403,14 @@ class App extends Component {
   handlePredict = () => {
     if (this.ffnn !== undefined) {
       const input = Matrix.vectorFromArray(this.canvasRef.current.predict());
-      // input.mul(255);
-      // input.map(Math.round);
 
-      // Standardize or normalize input pixels
       if (USE_STANDARDIZATION) {
         input
           .sub(this.ffnn.trainMean)
           .div(Matrix.map(this.ffnn.trainSTD, (x) => x + EPSILON));
-      } else {
-        // input.div(255);
       }
-      const ffnnOutputArr = this.ffnn.feedforward(input);
+
+      const ffnnOutputArr = this.ffnn.forward(input);
       const ffnnPred = ffnnOutputArr.indexOf(Math.max(...ffnnOutputArr));
 
       // Update state about prediction and displayed probabilities
@@ -310,7 +437,7 @@ class App extends Component {
     for (let i = 0; i < 10; i++) {
       const cols = [];
 
-      for (let j = 0; j < NUM_TEST_SAMPLES; j++) {
+      for (let j = 0; j < NUM_MNIST_SAMPLES; j++) {
         const col = (
           <div className="col-auto" key={`col-${i}-${j}`}>
             <canvas
@@ -384,14 +511,14 @@ class App extends Component {
           <div className="col">
             <Description
               text={
-                "Digit recognition with feed forward (FFNN) and convolutional (CNN) neural networks."
+                "Digit recognition with feedforward (FFNN) and convolutional (CNN) neural networks."
               }
             />
           </div>
         </div>
         <div className="row pt-3">
           <div className="col">
-            <h3>Test Samples:</h3>
+            <h3>MNIST Samples:</h3>
           </div>
         </div>
         {testImages}
@@ -426,21 +553,21 @@ class App extends Component {
           <div className="col-6 col-md-4 col-lg-3">
             <div className="row">
               <div className="col text-right">
-                <h5>FFNN:</h5>
+                <h4 className="font-weight-bold">FFNN:</h4>
               </div>
               <div className="col text-left">
-                <h5>{this.state.ffnnPred}</h5>
+                <h4 className="font-weight-bold">{this.state.ffnnPred}</h4>
               </div>
             </div>
             {ffnnProbs}
           </div>
           <div className="col-6 col-md-4 col-lg-3">
-            <div className="row">
+            <div className="row font-weight-bold">
               <div className="col text-right">
-                <h5>CNN:</h5>
+                <h4 className="font-weight-bold">CNN:</h4>
               </div>
               <div className="col text-left">
-                <h5>{this.state.cnnPred}</h5>
+                <h4 className="font-weight-bold">{this.state.cnnPred}</h4>
               </div>
             </div>
             {cnnProbs}

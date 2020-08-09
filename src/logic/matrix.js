@@ -110,6 +110,10 @@ class Matrix {
     return new Matrix(arr.length, 1).map((_, i) => arr[i]);
   };
 
+  static matrixFromArray = (arr, rows, cols) => {
+    return new Matrix(rows, cols).map((_, i, j) => arr[i * cols + j]);
+  };
+
   toArray = () => {
     const arr = [];
     for (let i = 0; i < this.rows; i++) {
@@ -157,6 +161,32 @@ class Matrix {
   print = () => {
     console.table(this.data);
     return this;
+  };
+
+  getRegion = (x, y, w, h) => {
+    const region = new Matrix(h, w);
+    for (let r = 0; r < h; r++) {
+      for (let c = 0; c < w; c++) {
+        region.data[r][c] = this.data[y + r][x + c];
+      }
+    }
+    return region;
+  };
+
+  max = () => {
+    let max = Number.NEGATIVE_INFINITY;
+    let maxR = -1;
+    let maxC = -1;
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.data[r][c] > max) {
+          max = this.data[r][c];
+          maxR = r;
+          maxC = c;
+        }
+      }
+    }
+    return [max, maxR, maxC];
   };
 }
 
