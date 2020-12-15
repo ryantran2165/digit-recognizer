@@ -1,8 +1,7 @@
 # Digit Recognizer
 
-• Constructed interactive demo that recognizes handwritten digits using feedforward and convolutional neural networks  
-• Implemented neural networks by hand to deeply understand machine learning concepts and mathematics involved  
-• Skills used: JavaScript, JSX, HTML, CSS, SCSS, Git, React, Bootstrap, Visual Studio Code  
-• Check it out: https://www.ryanlongtran.com/digit-recognizer
+• Created web app that recognizes user-drawn digits using self-implemented feedforward and convolutional neural networks  
+• JavaScript/JSX, HTML, CSS/SASS | React, Bootstrap | Git  
+• https://www.ryanlongtran.com/digit-recognizer
 
-![Image of app](https://github.com/ryantran2165/ryantran2165.github.io/blob/source/src/assets/digit_recognizer.jpg)
+![Image of app](https://raw.githubusercontent.com/ryantran2165/ryantran2165.github.io/source/src/assets/images/digit_recognizer.jpg)
