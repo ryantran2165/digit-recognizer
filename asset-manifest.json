@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/digit-recognizer/static/css/main.fa8e07e5.chunk.css",
-    "main.js": "/digit-recognizer/static/js/main.ace0680b.chunk.js",
-    "main.js.map": "/digit-recognizer/static/js/main.ace0680b.chunk.js.map",
+    "main.js": "/digit-recognizer/static/js/main.128b1f88.chunk.js",
+    "main.js.map": "/digit-recognizer/static/js/main.128b1f88.chunk.js.map",
     "runtime-main.js": "/digit-recognizer/static/js/runtime-main.36072343.js",
     "runtime-main.js.map": "/digit-recognizer/static/js/runtime-main.36072343.js.map",
     "static/css/2.89f067aa.chunk.css": "/digit-recognizer/static/css/2.89f067aa.chunk.css",
     "static/js/2.877a7f6e.chunk.js": "/digit-recognizer/static/js/2.877a7f6e.chunk.js",
     "static/js/2.877a7f6e.chunk.js.map": "/digit-recognizer/static/js/2.877a7f6e.chunk.js.map",
     "index.html": "/digit-recognizer/index.html",
-    "precache-manifest.2b5005a1103737c73d94038cc7703341.js": "/digit-recognizer/precache-manifest.2b5005a1103737c73d94038cc7703341.js",
+    "precache-manifest.66d7f4440e4aa432de456dd830236806.js": "/digit-recognizer/precache-manifest.66d7f4440e4aa432de456dd830236806.js",
     "service-worker.js": "/digit-recognizer/service-worker.js",
     "static/css/2.89f067aa.chunk.css.map": "/digit-recognizer/static/css/2.89f067aa.chunk.css.map",
     "static/css/main.fa8e07e5.chunk.css.map": "/digit-recognizer/static/css/main.fa8e07e5.chunk.css.map",
@@ -20,6 +20,6 @@
     "static/css/2.89f067aa.chunk.css",
     "static/js/2.877a7f6e.chunk.js",
     "static/css/main.fa8e07e5.chunk.css",
-    "static/js/main.ace0680b.chunk.js"
+    "static/js/main.128b1f88.chunk.js"
   ]
 }
