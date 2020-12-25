@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 const Button = ({ value, onClick }) => {
   const handleOnClick = (e) => {
+    // Remove focus from button
     e.target.blur();
     onClick();
   };

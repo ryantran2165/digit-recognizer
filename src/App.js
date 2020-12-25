@@ -1,6 +1,4 @@
 import React, { Component } from "react";
-import Title from "./components/title";
-import Description from "./components/description";
 import Button from "./components/button";
 import Canvas from "./components/canvas";
 import GithubCorner from "react-github-corner";
@@ -512,42 +510,27 @@ class App extends Component {
     }
 
     return (
-      <div className="App container text-center pt-5">
+      <div className="App container text-center py-5">
         <div className="row">
           <div className="col">
-            <Title text="Digit Recognizer" />
-          </div>
-        </div>
-        <div className="row">
-          <div className="col">
-            <Description
-              text={
-                "Digit recognition with feedforward (FFNN) and convolutional (CNN) neural networks."
-              }
-            />
-          </div>
-        </div>
-        <div className="row pt-3">
-          <div className="col">
-            <h3>MNIST Samples:</h3>
-          </div>
-        </div>
-        {sampleImages}
-        <div className="row justify-content-center pt-5">
-          <div className="col-4 col-md-3 col-xl-2">
-            <Button value="Predict" onClick={this.handlePredict} />
-          </div>
-          <div className="col-4 col-md-3 col-xl-2">
-            <Button value="Clear" onClick={this.handleClear} />
-          </div>
-        </div>
-        <div className="row pt-3">
-          <div className="col">
-            <Canvas ref={this.canvasRef} />
-          </div>
-        </div>
-        <div className="row">
-          <div className="col">
+            <h1 className="font-weight-bold">Digit Recognizer</h1>
+            <h5>
+              Digit recognition with feedforward (FFNN) and convolutional (CNN)
+              neural networks.
+            </h5>
+            <h3 className="pt-3">MNIST Samples:</h3>
+            {sampleImages}
+            <div className="row justify-content-center pt-4">
+              <div className="col-4 col-md-3 col-xl-2">
+                <Button value="Predict" onClick={this.handlePredict} />
+              </div>
+              <div className="col-4 col-md-3 col-xl-2">
+                <Button value="Clear" onClick={this.handleClear} />
+              </div>
+            </div>
+            <div className="pt-4">
+              <Canvas ref={this.canvasRef} />
+            </div>
             <canvas
               id="canvas28"
               width="28"
@@ -558,30 +541,30 @@ class App extends Component {
                 backgroundColor: "white",
               }}
             ></canvas>
-          </div>
-        </div>
-        <div className="row justify-content-center pb-5">
-          <div className="col-6 col-md-4 col-lg-3">
-            <div className="row">
-              <div className="col text-right">
-                <h4 className="font-weight-bold">FFNN:</h4>
+            <div className="row justify-content-center">
+              <div className="col-6 col-md-4 col-lg-3">
+                <div className="row">
+                  <div className="col text-right">
+                    <h4 className="font-weight-bold">FFNN:</h4>
+                  </div>
+                  <div className="col text-left">
+                    <h4 className="font-weight-bold">{this.state.ffnnPred}</h4>
+                  </div>
+                </div>
+                {ffnnProbs}
               </div>
-              <div className="col text-left">
-                <h4 className="font-weight-bold">{this.state.ffnnPred}</h4>
+              <div className="col-6 col-md-4 col-lg-3">
+                <div className="row font-weight-bold">
+                  <div className="col text-right">
+                    <h4 className="font-weight-bold">CNN:</h4>
+                  </div>
+                  <div className="col text-left">
+                    <h4 className="font-weight-bold">{this.state.cnnPred}</h4>
+                  </div>
+                </div>
+                {cnnProbs}
               </div>
             </div>
-            {ffnnProbs}
-          </div>
-          <div className="col-6 col-md-4 col-lg-3">
-            <div className="row font-weight-bold">
-              <div className="col text-right">
-                <h4 className="font-weight-bold">CNN:</h4>
-              </div>
-              <div className="col text-left">
-                <h4 className="font-weight-bold">{this.state.cnnPred}</h4>
-              </div>
-            </div>
-            {cnnProbs}
           </div>
         </div>
         <GithubCorner
