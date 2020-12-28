@@ -515,8 +515,11 @@ class App extends Component {
           <div className="col">
             <h1 className="font-weight-bold">Digit Recognizer</h1>
             <h5>
-              Digit recognition with feedforward (FFNN) and convolutional (CNN)
-              neural networks.
+              Recognizes user-drawn digits using self-implemented feedforward
+              (FFNN) and convolutional (CNN) neural networks.
+              <br />
+              Draw a number from 0 to 9 and see if the networks can predict your
+              number!
             </h5>
             <h3 className="pt-3">MNIST Samples:</h3>
             {sampleImages}
