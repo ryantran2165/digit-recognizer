@@ -1,6 +1,7 @@
 # Digit Recognizer
 
-• Created web app that recognizes user-drawn digits using self-implemented feedforward and convolutional neural networks  
+• Created web app that recognizes user-drawn digits using self-implemented feedforward (FFNN) and convolutional (CNN) neural networks  
+• Solidified understanding of fundamental machine learning theory and mathematics behind FFNNs and CNNs  
 • JavaScript/JSX, HTML, CSS/SASS | React, Bootstrap | Git  
 • https://www.ryanlongtran.com/digit-recognizer
 
